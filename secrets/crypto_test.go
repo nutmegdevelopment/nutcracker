@@ -1,20 +1,10 @@
 package secrets
 
 import (
-	"crypto/rand"
+	"errors"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/crypto/nacl/box"
 	"testing"
 )
-
-func isZero(in []byte) bool {
-	for i := range in {
-		if in[i] != 0 {
-			return false
-		}
-	}
-	return true
-}
 
 func TestZero(t *testing.T) {
 	slice := []byte("123456")
@@ -23,39 +13,51 @@ func TestZero(t *testing.T) {
 	Zero(slice)
 	Zero(array[:])
 
-	assert.True(t, isZero(array[:]), "Array should be zeroed")
-	assert.True(t, isZero(slice), "Slice should be zeroed")
+	assert.True(t, isNull(array[:]), "Array should be zeroed")
+	assert.True(t, isNull(slice), "Slice should be zeroed")
 }
 
 func TestEncrypt(t *testing.T) {
 
-	srcPub, srcPriv, err := box.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	s, err := New("test", []byte("message"))
+	assert.Equal(t, errors.New("Please unseal first"), err,
+		"Should raise an error")
 
-	message := []byte("test message")
+	_, err = s.Share(&Key{})
+	assert.Equal(t, errors.New("Please unseal first"), err,
+		"Should raise an error")
 
-	s, decKey, err := New("test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	masterSecret, err := Initialise()
+	assert.Nil(t, err)
 
-	err = s.Encrypt(srcPub, srcPriv, message)
-	if err != nil {
-		t.Fatal(err)
-	}
+	origMaster := master
+	masterKey := masterSecret.Key.Display()
 
-	assert.True(t, isZero(message), "Message should be zeroed")
-	assert.True(t, isZero(srcPriv[:]), "Private key should be zeroed")
-	assert.False(t, isZero(s.Box), "Box should contain data")
-	assert.False(t, isZero(s.Nonce[:]), "Nonce should contain data")
+	err = Unseal(masterSecret, masterKey)
+	assert.Nil(t, err)
 
-	out, err := s.Decrypt(decKey)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Equal(t, origMaster, master, "Master key should match")
 
-	assert.Equal(t, []byte("test message"), out, "Decrypted message should match")
+	s, err = New("test", []byte("message"))
+	assert.Nil(t, err)
+
+	assert.True(t, isNull(s.Key.raw[:]), "Private key should be zeroed")
+
+	dest := new(Key)
+	err = dest.New("testid")
+	assert.Nil(t, err)
+
+	t.Log(dest.raw)
+
+	shared, err := s.Share(dest)
+	assert.Nil(t, err)
+
+	message, err := s.Decrypt(shared, dest.Display())
+	assert.Nil(t, err)
+
+	t.Log(dest.raw)
+
+	assert.Equal(t, []byte("message"), message,
+		"Decrypted message should match")
 
 }
