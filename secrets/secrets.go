@@ -17,16 +17,17 @@ func init() {
 }
 
 // Create a new master secret.
-func Initialise() (masterKey Secret, err error) {
+func Initialise() (masterKey *Secret, err error) {
+
+	masterKey = new(Secret)
 
 	// We can't use masterKey.New() here
 	masterKey.Name = "master"
-	masterKey.Nonce = new([24]byte)
-	_, err = io.ReadFull(rand.Reader, masterKey.Nonce[:])
-	if err != nil {
+	masterKey.Root = true
+
+	if masterKey.newNonce() != nil {
 		return
 	}
-	masterKey.Root = true
 
 	// Create a new master key
 	_, err = io.ReadFull(rand.Reader, master[:])
@@ -44,13 +45,13 @@ func Initialise() (masterKey Secret, err error) {
 	masterKey.Message = secretbox.Seal(
 		nil,
 		master[:],
-		masterKey.Nonce,
+		masterKey.nonce(),
 		masterKey.Key.raw)
 
 	return
 }
 
-func Unseal(masterKey Secret, key []byte) (err error) {
+func Unseal(masterKey *Secret, key []byte) (err error) {
 	defer Zero(key)
 
 	priv, err := decode(key)
@@ -61,7 +62,7 @@ func Unseal(masterKey Secret, key []byte) (err error) {
 
 	_, ok := secretbox.Open(master[:],
 		masterKey.Message,
-		masterKey.Nonce,
+		masterKey.nonce(),
 		priv)
 
 	if !ok {
@@ -72,13 +73,33 @@ func Unseal(masterKey Secret, key []byte) (err error) {
 }
 
 type Secret struct {
-	Name    string
+	ID      uint   `gorm:"primary_key"`
+	Name    string `sql:"not null"`
 	Message []byte
-	Nonce   *[24]byte // 24 byte length mandated by NaCL.
+	Nonce   []byte
 	Key     Key
-	Pubkey  *[32]byte // Used for sharing secrets
-	KeyID   string    // To find sharing secrets matching a key.
-	Root    bool      // Identifies root secrets
+	Pubkey  []byte
+	KeyID   uint
+	Root    bool // Identifies root secrets
+}
+
+func (s *Secret) nonce() *[24]byte {
+	nonce := new([24]byte)
+	scopy(nonce[:], s.Nonce)
+	return nonce
+}
+
+func (s *Secret) pubkey() *[32]byte {
+	pubkey := new([32]byte)
+	scopy(pubkey[:], s.Pubkey)
+	return pubkey
+}
+
+func (s *Secret) newNonce() error {
+	s.Nonce = make([]byte, 24, 24)
+	// We generate nonces randomly - chance of collision is negligable
+	_, err := io.ReadFull(rand.Reader, s.Nonce)
+	return err
 }
 
 // New creates a new secret container with a unique key.
@@ -126,10 +147,7 @@ func (s *Secret) Update(message []byte) (err error) {
 }
 
 func (s *Secret) encrypt(message []byte) (err error) {
-	// We generate nonces randomly - chance of collision is negligable
-	s.Nonce = new([24]byte)
-	_, err = io.ReadFull(rand.Reader, s.Nonce[:])
-	if err != nil {
+	if s.newNonce() != nil {
 		return
 	}
 
@@ -137,7 +155,7 @@ func (s *Secret) encrypt(message []byte) (err error) {
 	s.Message = secretbox.Seal(
 		nil,
 		message,
-		s.Nonce,
+		s.nonce(),
 		s.Key.raw)
 
 	s.Key.Encrypt()
@@ -155,10 +173,9 @@ func (s *Secret) Share(key *Key) (shared *Secret, err error) {
 		return
 	}
 	shared = new(Secret)
-
-	// Set mapping values
 	shared.Name = s.Name
-	shared.KeyID = key.Id
+
+	shared.Key = *key
 
 	err = s.Key.Decrypt()
 	if err != nil {
@@ -166,21 +183,21 @@ func (s *Secret) Share(key *Key) (shared *Secret, err error) {
 	}
 	defer s.Key.Zero()
 
-	shared.Nonce = new([24]byte)
-	_, err = io.ReadFull(rand.Reader, shared.Nonce[:])
-	if err != nil {
+	if shared.newNonce() != nil {
 		return
 	}
 
 	// Generate a public key from the master
-	shared.Pubkey = new([32]byte)
-	curve25519.ScalarBaseMult(shared.Pubkey, master)
+	pub := new([32]byte)
+	curve25519.ScalarBaseMult(pub, master)
+
+	scopy(shared.Pubkey, pub[:])
 
 	shared.Message = box.Seal(
 		nil,
 		s.Key.raw[:],
-		shared.Nonce,
-		key.Public,
+		shared.nonce(),
+		key.pubkey(),
 		master)
 
 	return
@@ -203,8 +220,8 @@ func (s *Secret) Decrypt(shared *Secret, key []byte) (message []byte, err error)
 	buf, ok := box.Open(
 		nil,
 		shared.Message,
-		shared.Nonce,
-		shared.Pubkey,
+		shared.nonce(),
+		shared.pubkey(),
 		priv)
 
 	if !ok {
@@ -212,7 +229,7 @@ func (s *Secret) Decrypt(shared *Secret, key []byte) (message []byte, err error)
 		return
 	}
 
-	copy(sharedKey[:], buf)
+	scopy(sharedKey[:], buf)
 	Zero(buf)
 
 	defer Zero(sharedKey[:])
@@ -221,7 +238,7 @@ func (s *Secret) Decrypt(shared *Secret, key []byte) (message []byte, err error)
 	message, ok = secretbox.Open(
 		nil,
 		s.Message,
-		s.Nonce,
+		s.nonce(),
 		sharedKey)
 
 	if !ok {
@@ -234,22 +251,42 @@ func (s *Secret) Decrypt(shared *Secret, key []byte) (message []byte, err error)
 }
 
 type Key struct {
-	Id     string
+	ID     uint   `gorm:"primary_key"`
+	Name   string `sql:"not null;unique"`
 	Key    []byte
-	Nonce  *[24]byte // 24 byte length mandated by NaCL.
-	Public *[32]byte
+	Nonce  []byte
+	Public []byte
 	raw    *[32]byte
 }
 
+func (k *Key) nonce() *[24]byte {
+	nonce := new([24]byte)
+	scopy(nonce[:], k.Nonce)
+	return nonce
+}
+
+func (k *Key) pubkey() *[32]byte {
+	pubkey := new([32]byte)
+	scopy(pubkey[:], k.Public)
+	return pubkey
+}
+
+func (k *Key) newNonce() error {
+	k.Nonce = make([]byte, 24, 24)
+	// We generate nonces randomly - chance of collision is negligable
+	_, err := io.ReadFull(rand.Reader, k.Nonce)
+	return err
+}
+
 // Creates a new key
-func (k *Key) New(id string) (err error) {
-	k.Id = id
-	k.Nonce = new([24]byte)
-	_, err = io.ReadFull(rand.Reader, k.Nonce[:])
-	if err != nil {
+func (k *Key) New(name string) (err error) {
+	k.Name = name
+	if k.newNonce() != nil {
 		return
 	}
-	k.Public, k.raw, err = box.GenerateKey(rand.Reader)
+	pub := new([32]byte)
+	pub, k.raw, err = box.GenerateKey(rand.Reader)
+	scopy(k.Public, pub[:])
 	return
 }
 
@@ -260,7 +297,7 @@ func (k *Key) Encrypt() {
 	k.Key = secretbox.Seal(
 		nil,
 		k.raw[:],
-		k.Nonce,
+		k.nonce(),
 		master)
 }
 
@@ -272,14 +309,14 @@ func (k *Key) Decrypt() (err error) {
 	buf, ok := secretbox.Open(
 		nil,
 		k.Key,
-		k.Nonce,
+		k.nonce(),
 		master)
 	if !ok {
 		err = errors.New("Unable to decrypt secret")
 		return
 	}
 
-	copy(k.raw[:], buf)
+	scopy(k.raw[:], buf)
 	Zero(buf)
 	return
 }
@@ -322,7 +359,7 @@ func decode(in []byte) (out *[32]byte, err error) {
 		return
 	}
 
-	copy(out[:], buf[0:32])
+	scopy(out[:], buf)
 	Zero(buf)
 	return
 }
@@ -334,4 +371,13 @@ func isNull(in []byte) bool {
 		}
 	}
 	return true
+}
+
+func scopy(dst, src []byte) {
+	for i := 0; i < len(src); i++ {
+		if i == len(dst) {
+			return
+		}
+		dst[i] = src[i]
+	}
 }
