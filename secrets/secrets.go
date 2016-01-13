@@ -26,6 +26,7 @@ func Initialise() (masterKey Secret, err error) {
 	if err != nil {
 		return
 	}
+	masterKey.Root = true
 
 	// Create a new master key
 	_, err = io.ReadFull(rand.Reader, master[:])
@@ -75,7 +76,9 @@ type Secret struct {
 	Message []byte
 	Nonce   *[24]byte // 24 byte length mandated by NaCL.
 	Key     Key
-	Pubkey  *[32]byte
+	Pubkey  *[32]byte // Used for sharing secrets
+	KeyID   string    // To find sharing secrets matching a key.
+	Root    bool      // Identifies root secrets
 }
 
 // New creates a new secret container with a unique key.
@@ -96,17 +99,36 @@ func New(name string, message []byte) (s *Secret, err error) {
 
 	s = new(Secret)
 
-	s.Name = name
-
-	// We generate nonces randomly - chance of collision is negligable
-	s.Nonce = new([24]byte)
-	_, err = io.ReadFull(rand.Reader, s.Nonce[:])
+	// Generate a unique encryption key
+	err = s.Key.New("")
 	if err != nil {
 		return
 	}
 
-	// Generate a unique encryption key
-	err = s.Key.New("")
+	s.Name = name
+	s.Root = true
+
+	return s, s.encrypt(message)
+}
+
+func (s *Secret) Update(message []byte) (err error) {
+	if isNull(master[:]) {
+		err = errors.New("Please unseal first")
+		return
+	}
+
+	defer Zero(message)
+
+	// Decrypt the unique encryption key
+	s.Key.Decrypt()
+
+	return s.encrypt(message)
+}
+
+func (s *Secret) encrypt(message []byte) (err error) {
+	// We generate nonces randomly - chance of collision is negligable
+	s.Nonce = new([24]byte)
+	_, err = io.ReadFull(rand.Reader, s.Nonce[:])
 	if err != nil {
 		return
 	}
@@ -133,6 +155,10 @@ func (s *Secret) Share(key *Key) (shared *Secret, err error) {
 		return
 	}
 	shared = new(Secret)
+
+	// Set mapping values
+	shared.Name = s.Name
+	shared.KeyID = key.Id
 
 	err = s.Key.Decrypt()
 	if err != nil {

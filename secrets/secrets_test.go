@@ -47,17 +47,21 @@ func TestEncrypt(t *testing.T) {
 	err = dest.New("testid")
 	assert.Nil(t, err)
 
-	t.Log(dest.raw)
-
 	shared, err := s.Share(dest)
 	assert.Nil(t, err)
 
 	message, err := s.Decrypt(shared, dest.Display())
 	assert.Nil(t, err)
 
-	t.Log(dest.raw)
-
 	assert.Equal(t, []byte("message"), message,
 		"Decrypted message should match")
+
+	s.Update([]byte("new message"))
+
+	message, err = s.Decrypt(shared, dest.Display())
+	assert.Nil(t, err)
+
+	assert.Equal(t, []byte("new message"), message,
+		"new decrypted message should match")
 
 }
