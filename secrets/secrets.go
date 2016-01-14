@@ -71,6 +71,10 @@ func Unseal(masterKey *Secret, key []byte) (err error) {
 	return
 }
 
+func Seal() {
+	Zero(master[:])
+}
+
 type Secret struct {
 	ID      uint   `gorm:"primary_key" json:"-"`
 	Name    string `sql:"not null"`
@@ -249,7 +253,7 @@ func (s *Secret) Decrypt(shared *Secret, key []byte) (message []byte, err error)
 
 type Key struct {
 	ID     uint   `gorm:"primary_key" json:"-"`
-	Name   string `sql:"not null;unique" json:",omitempty"`
+	Name   string `sql:"not null;unique" json:"Id,omitempty"`
 	Key    []byte `json:",omitempty"`
 	Nonce  []byte `json:"-"`
 	Public []byte `json:"-"`

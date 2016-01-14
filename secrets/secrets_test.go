@@ -33,10 +33,13 @@ func TestEncrypt(t *testing.T) {
 	origMaster := master
 	masterKey := masterSecret.Key.Display()
 
-	Zero(master[:])
+	Seal()
+	assert.True(t, isNull(master[:]), "Master key should be sealed")
 
 	err = Unseal(masterSecret, masterKey)
 	assert.Nil(t, err)
+
+	assert.False(t, isNull(master[:]), "Master key should be unsealed")
 
 	assert.Equal(t, origMaster, master, "Master key should match")
 
