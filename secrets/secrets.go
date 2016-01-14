@@ -1,11 +1,11 @@
 package secrets
 
 import (
-	"code.google.com/p/go.crypto/nacl/box"
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"golang.org/x/crypto/curve25519"
+	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/secretbox"
 	"io"
 )
@@ -73,14 +73,14 @@ func Unseal(masterKey *Secret, key []byte) (err error) {
 }
 
 type Secret struct {
-	ID      uint   `gorm:"primary_key"`
+	ID      uint   `gorm:"primary_key" json:"-"`
 	Name    string `sql:"not null"`
-	Message []byte
-	Nonce   []byte
-	Key     Key
-	Pubkey  []byte
-	KeyID   uint
-	Root    bool // Identifies root secrets
+	Message []byte `json:",omitempty"`
+	Nonce   []byte `json:"-"`
+	Key     Key    `json:",omitempty"`
+	Pubkey  []byte `json:"-"`
+	KeyID   uint   `json:"-"`
+	Root    bool   `json:"-"`
 }
 
 func (s *Secret) nonce() *[24]byte {
@@ -251,11 +251,11 @@ func (s *Secret) Decrypt(shared *Secret, key []byte) (message []byte, err error)
 }
 
 type Key struct {
-	ID     uint   `gorm:"primary_key"`
-	Name   string `sql:"not null;unique"`
-	Key    []byte
-	Nonce  []byte
-	Public []byte
+	ID     uint   `gorm:"primary_key" json:"-"`
+	Name   string `sql:"not null;unique" json:",omitempty"`
+	Key    []byte `json:",omitempty"`
+	Nonce  []byte `json:"-"`
+	Public []byte `json:"-"`
 	raw    *[32]byte
 }
 
