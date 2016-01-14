@@ -2,7 +2,6 @@ package secrets
 
 import (
 	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/nacl/box"
@@ -54,21 +53,21 @@ func Initialise() (masterKey *Secret, err error) {
 func Unseal(masterKey *Secret, key []byte) (err error) {
 	defer Zero(key)
 
-	priv, err := decode(key)
-	if err != nil {
-		return
-	}
+	priv := new([32]byte)
+	scopy(priv[:], key)
 	defer Zero(priv[:])
 
-	_, ok := secretbox.Open(master[:],
+	buf, ok := secretbox.Open(
+		nil,
 		masterKey.Message,
 		masterKey.nonce(),
 		priv)
-
+	defer Zero(buf)
 	if !ok {
 		err = errors.New("Unable to decrypt secret")
 		return
 	}
+	scopy(master[:], buf)
 	return
 }
 
@@ -204,15 +203,13 @@ func (s *Secret) Share(key *Key) (shared *Secret, err error) {
 }
 
 // Decrypt decrypts a secret given a shared key and a
-// base64-encoded secret key provided by the user.
+// secret key provided by the user.
 // This does not require the master key to be unsealed.
 func (s *Secret) Decrypt(shared *Secret, key []byte) (message []byte, err error) {
 	defer Zero(key)
 
-	priv, err := decode(key)
-	if err != nil {
-		return
-	}
+	priv := new([32]byte)
+	scopy(priv[:], key)
 	defer Zero(priv[:])
 
 	// Decrypt the shared key
@@ -321,10 +318,9 @@ func (k *Key) Decrypt() (err error) {
 	return
 }
 
-// Show returns a base64-encoded representation of the key for
-// end users.
+// Display prints the unexported raw key
 func (k *Key) Display() []byte {
-	return encode(k.raw[:])
+	return k.raw[:]
 }
 
 // Zero erases the private portion of a key in memory
@@ -337,31 +333,6 @@ func Zero(in []byte) {
 	for i := range in {
 		in[i] ^= in[i]
 	}
-}
-
-func encode(in []byte) (out []byte) {
-	encLen := base64.RawURLEncoding.EncodedLen(len(in))
-
-	out = make([]byte, encLen, encLen)
-	base64.RawURLEncoding.Encode(out, in)
-	return
-}
-
-func decode(in []byte) (out *[32]byte, err error) {
-	out = new([32]byte)
-
-	// We can't use out directly as base64 has an irritating
-	// habit of appending null bytes.
-	buf := make([]byte, base64.RawURLEncoding.DecodedLen(len(in)))
-
-	_, err = base64.RawURLEncoding.Decode(buf, in)
-	if err != nil {
-		return
-	}
-
-	scopy(out[:], buf)
-	Zero(buf)
-	return
 }
 
 func isNull(in []byte) bool {

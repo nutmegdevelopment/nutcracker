@@ -33,6 +33,8 @@ func TestEncrypt(t *testing.T) {
 	origMaster := master
 	masterKey := masterSecret.Key.Display()
 
+	Zero(master[:])
+
 	err = Unseal(masterSecret, masterKey)
 	assert.Nil(t, err)
 
