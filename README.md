@@ -22,7 +22,9 @@ It has a simple JSON api, and requires no configuration other than environment v
 When you intialise the vault, a master key will be created.
 This will allow you to create new keys to distribute to users, and can be used to unseal the vault if the server is restarted, or the vault is sealed.
 
-Authentication for calls that require it is done by including the X-Secret-ID and X-Secret-Key headers, with your key name and key.
+Authentication for calls that require it is done by including the following headers:
+```X-Secret-ID: your key name```
+```X-Secret-Key: your secret key```
 
 ## Configuration
 

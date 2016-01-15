@@ -49,9 +49,16 @@ func (p *DB) AddSecret(s *secrets.Secret) error {
 
 	// Add the key, if missing
 	if s.Key.Name != "" {
+		d := tx.Find(&s.Key)
+		if d.Error == gorm.RecordNotFound {
 
-		d := tx.FirstOrCreate(&s.Key, &secrets.Key{Name: s.Key.Name})
-		if d.Error != nil {
+			d := tx.Create(&s.Key)
+			if d.Error != nil {
+				tx.Rollback()
+				return d.Error
+			}
+
+		} else if d.Error != nil {
 			tx.Rollback()
 			return d.Error
 		}
