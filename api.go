@@ -2,146 +2,290 @@ package main
 
 import (
 	"code.google.com/p/go-uuid/uuid"
+	"crypto/subtle"
+	"encoding/base64"
 	"encoding/json"
+	"github.com/jinzhu/gorm"
 	"github.com/nutmegdevelopment/nutcracker/secrets"
+	"golang.org/x/crypto/curve25519"
 	"net/http"
 )
 
 func Health(w http.ResponseWriter, r *http.Request) {
-	resp := newApiResponse(w)
-	resp.message("OK", 200)
+	api := newAPI(w, r)
+	api.message("OK", 200)
 	return
 }
 
 // Initialise should be run on first use of a new vault.
 func Initialise(w http.ResponseWriter, r *http.Request) {
 
-	resp := newApiResponse(w)
+	api := newAPI(w, r)
 
 	// Check for an existing master secret
-	res, err := database.GetSecrets(&secrets.Secret{Name: "master"})
-	if err != nil {
-		resp.error("Database error", 500)
+	master := new(secrets.Secret)
+	master.Name = "master"
+
+	err := database.GetRootSecret(master)
+	switch err {
+
+	case gorm.RecordNotFound:
+		break
+
+	case nil:
+		api.error("Vault already initialised", 409)
 		return
-	}
-	if len(res) > 0 {
-		resp.error("Vault already initialised", 409)
+
+	default:
+		api.error("Database error", 500)
 		return
+
 	}
 
 	key, err := secrets.Initialise()
 	if err != nil {
-		resp.error("Error intialising master secret", 500)
+		api.error("Error intialising master secret", 500)
 		return
 	}
 	err = database.AddSecret(key)
 	if err != nil {
-		resp.error("Database error", 500)
+		api.error("Database error", 500)
 		return
 	}
 
-	resp.reply(secrets.Key{
+	api.reply(secrets.Key{
 		Name: key.Name,
 		Key:  key.Key.Display()},
 		201)
 }
 
 func Unseal(w http.ResponseWriter, r *http.Request) {
-	req := newApiRequest(r)
-	resp := newApiResponse(w)
+	api := newAPI(w, r)
 
-	request, err := req.read()
+	if !api.auth() {
+		api.error("Unauthorized", 401)
+	}
+
+	master := new(secrets.Secret)
+	master.Name = "master"
+
+	err := database.GetRootSecret(master)
+	switch err {
+
+	case gorm.RecordNotFound:
+		api.error("Vault not initialised", 404)
+		return
+
+	case nil:
+		break
+
+	default:
+		api.error("Database error", 500)
+		return
+
+	}
+
+	err = secrets.Unseal(master, api.key)
 	if err != nil {
-		println(err.Error())
-		resp.error("Bad request", 400)
+		api.error("Incorrect key for vault", 403)
 		return
 	}
 
-	if request.Key == nil {
-		resp.error("Missing elements in request", 400)
-		return
-	}
-
-	defer secrets.Zero(request.Key)
-
-	res, err := database.GetSecrets(&secrets.Secret{Name: "master"})
-	if err != nil {
-		resp.error("Database error", 500)
-		return
-	}
-	if len(res) == 0 {
-		resp.error("Vault not initialised", 400)
-		return
-	}
-
-	err = secrets.Unseal(&res[0], request.Key)
-	if err != nil {
-		resp.error("Incorrect key for vault", 403)
-		return
-	}
-
-	resp.message("OK", 200)
+	api.message("OK", 200)
 	return
 
 }
 
-func Message(w http.ResponseWriter, r *http.Request) {
-	req := newApiRequest(r)
-	resp := newApiResponse(w)
+func Seal(w http.ResponseWriter, r *http.Request) {
+	api := newAPI(w, r)
 
-	request, err := req.read()
+	secrets.Seal()
+
+	api.message("OK", 200)
+	return
+}
+
+func Message(w http.ResponseWriter, r *http.Request) {
+	api := newAPI(w, r)
+
+	if !api.auth() {
+		api.error("Unauthorized", 401)
+		return
+	}
+
+	request, err := api.read()
 	if err != nil {
-		println(err.Error())
-		resp.error("Bad request", 400)
+		api.error("Bad request", 400)
 		return
 	}
 
 	if len(request.Message) == 0 {
-		resp.error("Missing elements in request", 400)
+		api.error("Missing elements in request", 400)
 		return
 	}
 	if len(request.Name) == 0 {
-		resp.error("Missing elements in request", 400)
+		api.error("Missing elements in request", 400)
 		return
 	}
 
 	s, err := secrets.New(request.Name, []byte(request.Message))
 	if err != nil {
-		resp.error("Server error", 500)
+		api.error("Server error", 500)
 		return
 	}
 
 	err = database.AddSecret(s)
 	if err != nil {
-		resp.error("Database error", 500)
+		api.error("Database error", 500)
 		return
 	}
 
-	resp.message("OK", 201)
+	api.message("OK", 201)
 	return
 }
 
 func Key(w http.ResponseWriter, r *http.Request) {
-	resp := newApiResponse(w)
+	api := newAPI(w, r)
+
+	if !api.auth() {
+		api.error("Unauthorized", 401)
+		return
+	}
 
 	key := new(secrets.Key)
 
 	err := key.New(uuid.New())
 	if err != nil {
-		resp.error("Server error", 500)
+		api.error("Server error", 500)
 		return
 	}
 
 	err = database.AddKey(key)
 	if err != nil {
-		resp.error("Database error", 500)
+		api.error("Database error", 500)
 		return
 	}
 
-	resp.reply(secrets.Key{
+	api.reply(secrets.Key{
 		Name: key.Name,
 		Key:  key.Display()},
 		201)
+}
+
+func Share(w http.ResponseWriter, r *http.Request) {
+	api := newAPI(w, r)
+
+	if !api.auth() {
+		api.error("Unauthorized", 401)
+	}
+
+	request, err := api.read()
+	if err != nil {
+		api.error("Bad request", 400)
+		return
+	}
+
+	if len(request.KeyID) == 0 {
+		api.error("Missing elements in request", 400)
+		return
+	}
+	if len(request.Name) == 0 {
+		api.error("Missing elements in request", 400)
+		return
+	}
+
+	key := new(secrets.Key)
+	key.Name = request.KeyID
+	key.Key = request.Key
+
+	err = database.GetKey(key)
+	if err != nil {
+		api.error("Database error", 500)
+		return
+	}
+
+	secret := new(secrets.Secret)
+	secret.Name = request.Name
+
+	err = database.GetRootSecret(secret)
+	if err != nil {
+		api.error("Database error", 500)
+		return
+	}
+
+	shared, err := secret.Share(key)
+	if err != nil {
+		api.error("Server error", 500)
+		return
+	}
+
+	err = database.AddSecret(shared)
+	if err != nil {
+		api.error("Database error", 500)
+		return
+	}
+
+	api.message("OK", 201)
+	return
+}
+
+func View(w http.ResponseWriter, r *http.Request) {
+	api := newAPI(w, r)
+
+	api.auth()
+
+	request, err := api.read()
+	if err != nil {
+		api.error("Bad request", 400)
+		return
+	}
+
+	root := new(secrets.Secret)
+	shared := new(secrets.Secret)
+	root.Name = request.Name
+	shared.Name = request.Name
+
+	key := new(secrets.Key)
+	key.Name = api.keyID
+
+	err = database.GetSharedSecret(shared, key)
+	switch err {
+
+	case gorm.RecordNotFound:
+		api.error("Secret does not exist", 404)
+		return
+
+	case nil:
+		break
+
+	default:
+		api.error("Database error", 500)
+		return
+
+	}
+
+	err = database.GetRootSecret(root)
+	switch err {
+
+	case gorm.RecordNotFound:
+		api.error("Secret does not exist", 404)
+		return
+
+	case nil:
+		break
+
+	default:
+		api.error("Database error", 500)
+		return
+	}
+
+	message, err := root.Decrypt(shared, api.key)
+	if err != nil {
+		api.error("Cannot decrypt secret", 400)
+		return
+	}
+	defer secrets.Zero(message)
+	api.message(string(message), 200)
 }
 
 type Request struct {
@@ -151,45 +295,74 @@ type Request struct {
 	Message string
 }
 
-type apiRequest struct {
-	*http.Request
+type api struct {
+	req   *http.Request
+	resp  http.ResponseWriter
+	keyID string
+	key   []byte
 }
 
-func newApiRequest(r *http.Request) *apiRequest {
-	return &apiRequest{r}
+func newAPI(w http.ResponseWriter, r *http.Request) *api {
+	return &api{
+		resp: w,
+		req:  r,
+	}
 }
 
-func (a *apiRequest) read() (req Request, err error) {
-	defer a.Body.Close()
-	dec := json.NewDecoder(a.Body)
+func (a *api) read() (req Request, err error) {
+	defer a.req.Body.Close()
+	dec := json.NewDecoder(a.req.Body)
 	err = dec.Decode(&req)
 	return
 }
 
-type apiResponse struct {
-	http.ResponseWriter
-}
-
-func newApiResponse(w http.ResponseWriter) apiResponse {
-	return apiResponse{w}
-}
-
-func (a apiResponse) reply(v interface{}, code int) {
+func (a *api) reply(v interface{}, code int) {
 	data, _ := json.MarshalIndent(&v, "", "  ")
-	a.WriteHeader(code)
-	a.Write(data)
+	a.resp.WriteHeader(code)
+	a.resp.Write(data)
 }
 
-func (a apiResponse) error(message string, code int) {
+func (a *api) error(message string, code int) {
 	r := map[string]string{"error": message}
 	data, _ := json.MarshalIndent(&r, "", "  ")
-	a.WriteHeader(code)
-	a.Write(data)
+	a.resp.WriteHeader(code)
+	a.resp.Write(data)
 }
 
-func (a apiResponse) message(message string, code int) {
+func (a *api) message(message string, code int) {
 	r := map[string]string{"response": message}
 	data, _ := json.MarshalIndent(&r, "", "  ")
-	a.WriteHeader(code)
-	a.Write(data)
+	a.resp.WriteHeader(code)
+	a.resp.Write(data)
+}
+
+func (a *api) auth() bool {
+	var err error
+
+	k := new(secrets.Key)
+	k.Name = a.req.Header.Get("X-Secret-ID")
+	a.keyID = k.Name
+
+	a.key, err = base64.StdEncoding.DecodeString(
+		a.req.Header.Get("X-Secret-Key"))
+	if err != nil {
+		return false
+	}
+
+	priv := new([32]byte)
+	pub := new([32]byte)
+
+	copy(priv[:], a.key)
+	defer secrets.Zero(priv[:])
+
+	err = database.GetKey(k)
+	if err != nil {
+		return false
+	}
+
+	curve25519.ScalarBaseMult(pub, priv)
+	if subtle.ConstantTimeCompare(pub[:], k.Public) == 1 {
+		return true
+	}
+	return false
 }
