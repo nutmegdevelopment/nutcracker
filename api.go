@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
+	log "github.com/Sirupsen/logrus"
 	"github.com/jinzhu/gorm"
 	"github.com/nutmegdevelopment/nutcracker/secrets"
 	"golang.org/x/crypto/curve25519"
@@ -53,6 +54,8 @@ func Initialise(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Info("Vault initialised")
+
 	api.reply(secrets.Key{
 		Name: key.Name,
 		Key:  key.Key.Display()},
@@ -80,6 +83,7 @@ func Unseal(w http.ResponseWriter, r *http.Request) {
 		break
 
 	default:
+		log.Error(err)
 		api.error("Database error", 500)
 		return
 
@@ -91,6 +95,8 @@ func Unseal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Info("Vault unsealed")
+
 	api.message("OK", 200)
 	return
 
@@ -100,6 +106,8 @@ func Seal(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 
 	secrets.Seal()
+
+	log.Info("Vault sealed")
 
 	api.message("OK", 200)
 	return
@@ -136,9 +144,12 @@ func Message(w http.ResponseWriter, r *http.Request) {
 
 	err = database.AddSecret(s)
 	if err != nil {
+		log.Error(err)
 		api.error("Database error", 500)
 		return
 	}
+
+	log.Info("New secret added: ", s.Name)
 
 	api.message("OK", 201)
 	return
@@ -156,15 +167,19 @@ func Key(w http.ResponseWriter, r *http.Request) {
 
 	err := key.New(uuid.New())
 	if err != nil {
+		log.Error(err)
 		api.error("Server error", 500)
 		return
 	}
 
 	err = database.AddKey(key)
 	if err != nil {
+		log.Error(err)
 		api.error("Database error", 500)
 		return
 	}
+
+	log.Info("New key added: ", key.Name)
 
 	api.reply(secrets.Key{
 		Name: key.Name,
@@ -200,6 +215,7 @@ func Share(w http.ResponseWriter, r *http.Request) {
 
 	err = database.GetKey(key)
 	if err != nil {
+		log.Error(err)
 		api.error("Database error", 500)
 		return
 	}
@@ -208,22 +224,37 @@ func Share(w http.ResponseWriter, r *http.Request) {
 	secret.Name = request.Name
 
 	err = database.GetRootSecret(secret)
-	if err != nil {
+	switch err {
+
+	case gorm.RecordNotFound:
+		api.error("Secret does not exist", 404)
+		return
+
+	case nil:
+		break
+
+	default:
+		log.Error(err)
 		api.error("Database error", 500)
 		return
+
 	}
 
 	shared, err := secret.Share(key)
 	if err != nil {
+		log.Error(err)
 		api.error("Server error", 500)
 		return
 	}
 
 	err = database.AddSecret(shared)
 	if err != nil {
+		log.Error(err)
 		api.error("Database error", 500)
 		return
 	}
+
+	log.Info("Secret: ", shared.Name, " shared with: ", key.Name)
 
 	api.message("OK", 201)
 	return
@@ -259,6 +290,7 @@ func View(w http.ResponseWriter, r *http.Request) {
 		break
 
 	default:
+		log.Error(err)
 		api.error("Database error", 500)
 		return
 
@@ -275,6 +307,7 @@ func View(w http.ResponseWriter, r *http.Request) {
 		break
 
 	default:
+		log.Error(err)
 		api.error("Database error", 500)
 		return
 	}
@@ -285,6 +318,9 @@ func View(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer secrets.Zero(message)
+
+	log.Info("Secret: ", shared.Name, " viewed by: ", key.Name)
+
 	api.message(string(message), 200)
 }
 
