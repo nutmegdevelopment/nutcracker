@@ -313,7 +313,7 @@ func (k *Key) Decrypt() (err error) {
 		k.nonce(),
 		master)
 	if !ok {
-		err = errors.New("Unable to decrypt secret")
+		err = errors.New("Unable to decrypt key")
 		return
 	}
 
