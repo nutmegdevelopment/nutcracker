@@ -79,13 +79,26 @@ func (p *DB) GetKey(k *secrets.Key) error {
 	return p.conn.Find(k, k).Error
 }
 
-// Get Secrets returns all matching secrets from the database.
-func (p *DB) GetSecrets(s *secrets.Secret) ([]secrets.Secret, error) {
-	res := make([]secrets.Secret, 0)
-	d := p.conn.Find(&res, s)
-	return res, d.Error
+// GetRootSecret returns the latest matching root secret
+func (p *DB) GetRootSecret(s *secrets.Secret) error {
+	s.Root = true
+	return p.conn.Order("id desc").Find(s, s).Error
 }
 
+// GetSharedSecret returns the shared cert linking s and k
+func (p *DB) GetSharedSecret(s *secrets.Secret, k *secrets.Key) error {
+	// We don't use a join due to conflicting columns
+	err := p.GetKey(k)
+	if err != nil {
+		return err
+	}
+
+	s.Root = false
+	s.KeyID = k.ID
+	return p.conn.Order("id, desc").Find(s, s).Error
+}
+
+// UpdateSecret updates a secret
 func (p *DB) UpdateSecret(s *secrets.Secret) error {
 	return p.conn.Update(s).Error
 }

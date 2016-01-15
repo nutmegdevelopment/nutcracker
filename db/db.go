@@ -9,6 +9,7 @@ type DB interface {
 	AddSecret(*secrets.Secret) error
 	AddKey(*secrets.Key) error
 	GetKey(*secrets.Key) error
-	GetSecrets(*secrets.Secret) ([]secrets.Secret, error)
+	GetRootSecret(*secrets.Secret) error
+	GetSharedSecret(*secrets.Secret, *secrets.Key) error
 	UpdateSecret(*secrets.Secret) error
 }
