@@ -8,8 +8,7 @@ container:
     portMappings:
       - containerPort: 8080
 healthChecks:
-  - protocol: HTTP
-    path: /health
+  - protocol: TCP
 env:
   PGHOST: {{db_host}}
   PGUSER: {{db_user}}
