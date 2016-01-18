@@ -194,7 +194,7 @@ func (s *Secret) Share(key *Key) (shared *Secret, err error) {
 	pub := new([32]byte)
 	curve25519.ScalarBaseMult(pub, master)
 
-	scopy(shared.Pubkey, pub[:])
+	shared.Pubkey = pub[:]
 
 	shared.Message = box.Seal(
 		nil,
@@ -287,7 +287,7 @@ func (k *Key) New(name string) (err error) {
 	}
 	pub := new([32]byte)
 	pub, k.raw, err = box.GenerateKey(rand.Reader)
-	scopy(k.Public, pub[:])
+	k.Public = pub[:]
 	return
 }
 

@@ -48,6 +48,7 @@ func Initialise(w http.ResponseWriter, r *http.Request) {
 		api.error("Error intialising master secret", 500)
 		return
 	}
+
 	err = database.AddSecret(key)
 	if err != nil {
 		api.error("Database error", 500)
