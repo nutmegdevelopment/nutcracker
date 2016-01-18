@@ -5,6 +5,11 @@ instances: 1
 container:
   docker:
     image: registry.nutmeg.co.uk:8443/nutcracker:{{version}}
+    portMappings:
+      - containerPort: 8080
+healthChecks:
+  - protocol: HTTP
+    path: /health
 env:
   PGHOST: {{db_host}}
   PGUSER: {{db_user}}
