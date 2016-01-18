@@ -1,13 +1,13 @@
 package main
 
 import (
-	"code.google.com/p/go-uuid/uuid"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
 	"github.com/jinzhu/gorm"
 	"github.com/nutmegdevelopment/nutcracker/secrets"
+	"github.com/pborman/uuid"
 	"golang.org/x/crypto/curve25519"
 	"net/http"
 )
