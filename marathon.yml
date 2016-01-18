@@ -1,0 +1,12 @@
+id: /nutcracker
+cpus: 0.1
+mem: 128.0
+instances: 1
+container:
+  docker:
+    image: registry.nutmeg.co.uk:8443/nutcracker:{{version}}
+env:
+  PGHOST: {{db_host}}
+  PGUSER: {{db_user}}
+  PGPASSWORD: {{db_pass}}
+  PGDATABASE: {{db_schema}}
