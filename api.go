@@ -66,8 +66,9 @@ func Initialise(w http.ResponseWriter, r *http.Request) {
 func Unseal(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 
-	if !api.auth() {
+	if !api.auth() || !api.admin {
 		api.error("Unauthorized", 401)
+		return
 	}
 
 	master := new(secrets.Secret)
@@ -117,7 +118,7 @@ func Seal(w http.ResponseWriter, r *http.Request) {
 func Message(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 
-	if !api.auth() {
+	if !api.auth() || !api.admin {
 		api.error("Unauthorized", 401)
 		return
 	}
@@ -144,33 +145,51 @@ func Message(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = database.AddSecret(s)
-	if err != nil {
+	switch {
+
+	case err == nil:
+		log.Info("New secret added: ", s.Name)
+		api.message("OK", 201)
+
+	case err.Error() == "Secret already exists":
+		api.error("Secret already exists", 409)
+
+	default:
 		log.Error(err)
 		api.error("Database error", 500)
-		return
+
 	}
 
-	log.Info("New secret added: ", s.Name)
-
-	api.message("OK", 201)
 	return
 }
 
 func Key(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 
-	if !api.auth() {
+	if !api.auth() || !api.admin {
 		api.error("Unauthorized", 401)
+		return
+	}
+
+	request, err := api.read()
+	if err != nil {
+		api.error("Bad request", 400)
 		return
 	}
 
 	key := new(secrets.Key)
 
-	err := key.New(uuid.New())
+	err = key.New(uuid.New())
 	if err != nil {
 		log.Error(err)
 		api.error("Server error", 500)
 		return
+	}
+
+	if request.Admin {
+		key.ReadOnly = false
+	} else {
+		key.ReadOnly = true
 	}
 
 	err = database.AddKey(key)
@@ -183,16 +202,19 @@ func Key(w http.ResponseWriter, r *http.Request) {
 	log.Info("New key added: ", key.Name)
 
 	api.reply(secrets.Key{
-		Name: key.Name,
-		Key:  key.Display()},
+		Name:     key.Name,
+		Key:      key.Display(),
+		ReadOnly: key.ReadOnly,
+	},
 		201)
 }
 
 func Share(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 
-	if !api.auth() {
+	if !api.auth() || !api.admin {
 		api.error("Unauthorized", 401)
+		return
 	}
 
 	request, err := api.read()
@@ -264,7 +286,10 @@ func Share(w http.ResponseWriter, r *http.Request) {
 func View(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 
-	api.auth()
+	if !api.auth() {
+		api.error("Unauthorized", 401)
+		return
+	}
 
 	request, err := api.read()
 	if err != nil {
@@ -325,11 +350,72 @@ func View(w http.ResponseWriter, r *http.Request) {
 	api.message(string(message), 200)
 }
 
+func Update(w http.ResponseWriter, r *http.Request) {
+	api := newAPI(w, r)
+
+	if !api.auth() || !api.admin {
+		api.error("Unauthorized", 401)
+		return
+	}
+
+	request, err := api.read()
+	if err != nil {
+		api.error("Bad request", 400)
+		return
+	}
+
+	if len(request.Message) == 0 {
+		api.error("Missing elements in request", 400)
+		return
+	}
+	if len(request.Name) == 0 {
+		api.error("Missing elements in request", 400)
+		return
+	}
+
+	secret := new(secrets.Secret)
+	secret.Name = request.Name
+
+	err = database.GetRootSecret(secret)
+	switch err {
+
+	case gorm.RecordNotFound:
+		api.error("Secret does not exist", 404)
+		return
+
+	case nil:
+		break
+
+	default:
+		log.Error(err)
+		api.error("Database error", 500)
+		return
+
+	}
+
+	err = secret.Update([]byte(request.Message))
+	if err != nil {
+		api.error("Server error", 500)
+		return
+	}
+
+	err = database.UpdateSecret(secret)
+	if err != nil {
+		log.Error(err)
+		api.error("Database error", 500)
+	} else {
+		log.Info("Secret updated: ", secret.Name)
+		api.message("OK", 201)
+	}
+	return
+}
+
 type Request struct {
 	Name    string
 	Key     []byte
 	KeyID   string
 	Message string
+	Admin   bool
 }
 
 type api struct {
@@ -337,6 +423,7 @@ type api struct {
 	resp  http.ResponseWriter
 	keyID string
 	key   []byte
+	admin bool
 }
 
 func newAPI(w http.ResponseWriter, r *http.Request) *api {
@@ -395,6 +482,10 @@ func (a *api) auth() bool {
 	err = database.GetKey(k)
 	if err != nil {
 		return false
+	}
+
+	if !k.ReadOnly {
+		a.admin = true
 	}
 
 	curve25519.ScalarBaseMult(pub, priv)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	log "github.com/Sirupsen/logrus"
 	"github.com/jinzhu/gorm"
 	"github.com/nutmegdevelopment/nutcracker/db/mocks"
 	"github.com/nutmegdevelopment/nutcracker/secrets"
@@ -14,6 +15,11 @@ import (
 	"net/http/httptest"
 	"testing"
 )
+
+func init() {
+	var buf []byte
+	log.SetOutput(bytes.NewBuffer(buf))
+}
 
 func TestHealth(t *testing.T) {
 	w := httptest.NewRecorder()
@@ -142,9 +148,14 @@ func TestMessage(t *testing.T) {
 func TestKey(t *testing.T) {
 	w := httptest.NewRecorder()
 
-	testDb := new(mocks.DB)
+	req := Request{Admin: false}
+	data, err := json.Marshal(req)
+	assert.Nil(t, err, "Should not return error")
 
-	r := new(http.Request)
+	r, err := http.NewRequest("POST", "/secrets/key", bytes.NewReader(data))
+	assert.Nil(t, err, "Should not return error")
+
+	testDb := new(mocks.DB)
 
 	authSetup(testDb, r, nil)
 
@@ -208,6 +219,7 @@ func TestView(t *testing.T) {
 
 	key := new(secrets.Key)
 	err = key.New("testkey")
+	priv := key.Display()
 	assert.Nil(t, err, "Should not return error")
 
 	shared, err := root.Share(key)
@@ -222,7 +234,7 @@ func TestView(t *testing.T) {
 
 	testDb := new(mocks.DB)
 
-	authSetup(testDb, r, key.Display())
+	authSetup(testDb, r, priv)
 
 	testDb.On(
 		"GetSharedSecret",
@@ -232,6 +244,7 @@ func TestView(t *testing.T) {
 			args.Get(0).(*secrets.Secret).Name = shared.Name
 			args.Get(0).(*secrets.Secret).Nonce = shared.Nonce
 			args.Get(0).(*secrets.Secret).Message = shared.Message
+			args.Get(0).(*secrets.Secret).Pubkey = shared.Pubkey
 			args.Get(0).(*secrets.Secret).Key = shared.Key
 		}).Return(nil)
 
@@ -239,6 +252,7 @@ func TestView(t *testing.T) {
 		args.Get(0).(*secrets.Secret).Name = root.Name
 		args.Get(0).(*secrets.Secret).Nonce = root.Nonce
 		args.Get(0).(*secrets.Secret).Message = root.Message
+		args.Get(0).(*secrets.Secret).Pubkey = root.Pubkey
 		args.Get(0).(*secrets.Secret).Key = root.Key
 	}).Return(nil)
 
@@ -249,6 +263,40 @@ func TestView(t *testing.T) {
 	assert.Contains(t, res, "response", "Result should contain response")
 	assert.Equal(t, "testmessage", res["response"])
 
+}
+
+func TestUpdate(t *testing.T) {
+	w := httptest.NewRecorder()
+
+	secret, err := secrets.New("testsecret", []byte("testmessage"))
+	assert.Nil(t, err, "Should not return error")
+
+	req := Request{Name: "testsecret", Message: "newmessage"}
+	data, err := json.Marshal(req)
+	assert.Nil(t, err, "Should not return error")
+
+	r, err := http.NewRequest("POST", "/secrets/message", bytes.NewReader(data))
+	assert.Nil(t, err, "Should not return error")
+
+	testDb := new(mocks.DB)
+
+	authSetup(testDb, r, nil)
+
+	testDb.On("GetRootSecret", &secrets.Secret{Name: "testsecret"}).Run(func(args mock.Arguments) {
+		args.Get(0).(*secrets.Secret).Name = secret.Name
+		args.Get(0).(*secrets.Secret).Nonce = secret.Nonce
+		args.Get(0).(*secrets.Secret).Message = secret.Message
+		args.Get(0).(*secrets.Secret).Key = secret.Key
+	}).Return(nil)
+
+	testDb.Mock.On("UpdateSecret", mock.AnythingOfType("*secrets.Secret")).Return(nil)
+	database = testDb
+
+	Update(w, r)
+
+	res := getResp(w.Body.Bytes())
+	assert.Contains(t, res, "response", "Result should contain response")
+	assert.Equal(t, "OK", res["response"])
 }
 
 func TestSeal(t *testing.T) {

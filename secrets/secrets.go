@@ -168,7 +168,6 @@ func (s *Secret) encrypt(message []byte) (err error) {
 
 // Share creates a shared key, which the given key can use to decrypt
 // the secret.
-// This shared key is encrypted with
 // Requires the master key to be unsealed.
 func (s *Secret) Share(key *Key) (shared *Secret, err error) {
 	if isNull(master[:]) {
@@ -252,12 +251,13 @@ func (s *Secret) Decrypt(shared *Secret, key []byte) (message []byte, err error)
 }
 
 type Key struct {
-	ID     uint   `gorm:"primary_key" json:"-"`
-	Name   string `sql:"not null;unique" json:"Id,omitempty"`
-	Key    []byte `json:",omitempty"`
-	Nonce  []byte `json:"-"`
-	Public []byte `json:"-"`
-	raw    *[32]byte
+	ID       uint   `gorm:"primary_key" json:"-"`
+	Name     string `sql:"not null;unique" json:"Id,omitempty"`
+	Key      []byte `json:",omitempty"`
+	Nonce    []byte `json:"-"`
+	Public   []byte `json:"-"`
+	ReadOnly bool
+	raw      *[32]byte
 }
 
 func (k *Key) nonce() *[24]byte {

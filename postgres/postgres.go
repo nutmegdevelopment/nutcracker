@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"errors"
 	"github.com/jackc/pgx"
 	pgx_stdlib "github.com/jackc/pgx/stdlib"
 	"github.com/jinzhu/gorm"
@@ -42,9 +43,22 @@ func (p *DB) Connect() (err error) {
 	return d.Error
 }
 
-// AddSecret inserts a secret into the DB
+// AddSecret inserts a new secret into the DB
 func (p *DB) AddSecret(s *secrets.Secret) error {
+	if s.Root {
+		where := &secrets.Secret{Name: s.Name, Root: true}
+		d := p.conn.Find(&secrets.Secret{}, where)
+		if d.Error == nil {
+			return errors.New("Secret already exists")
+		}
+		if d.Error != gorm.RecordNotFound {
+			return d.Error
+		}
+	}
+	return p.addSecret(s)
+}
 
+func (p *DB) addSecret(s *secrets.Secret) error {
 	tx := p.conn.Begin()
 
 	// Add the key, if missing
@@ -52,7 +66,7 @@ func (p *DB) AddSecret(s *secrets.Secret) error {
 		d := tx.Find(&s.Key)
 		if d.Error == gorm.RecordNotFound {
 
-			d := tx.Create(&s.Key)
+			d = tx.Create(&s.Key)
 			if d.Error != nil {
 				tx.Rollback()
 				return d.Error
@@ -89,7 +103,11 @@ func (p *DB) GetKey(k *secrets.Key) error {
 // GetRootSecret returns the latest matching root secret
 func (p *DB) GetRootSecret(s *secrets.Secret) error {
 	s.Root = true
-	return p.conn.Order("id desc").Find(s, s).Error
+	d := p.conn.Order("id asc").Find(s, s)
+	if d.Error != nil {
+		return d.Error
+	}
+	return p.conn.Find(&s.Key, s.KeyID).Error
 }
 
 // GetSharedSecret returns the shared cert linking s and k
@@ -102,10 +120,16 @@ func (p *DB) GetSharedSecret(s *secrets.Secret, k *secrets.Key) error {
 
 	s.Root = false
 	s.KeyID = k.ID
-	return p.conn.Order("id, desc").Find(s, s).Error
+	d := p.conn.Order("id asc").Find(s, s)
+	if d.Error != nil {
+		return d.Error
+	}
+	return p.conn.Find(&s.Key, s.KeyID).Error
 }
 
-// UpdateSecret updates a secret
+// UpdateSecret updates a secret by adding a new copy of it to the db.
 func (p *DB) UpdateSecret(s *secrets.Secret) error {
-	return p.conn.Update(s).Error
+	// we need a new ID
+	s.ID = 0
+	return p.addSecret(s)
 }

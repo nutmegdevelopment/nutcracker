@@ -24,7 +24,7 @@ func main() {
 
 	addr := os.Getenv("LISTEN")
 	if addr == "" {
-		addr = "0.0.0.0:8080"
+		addr = "0.0.0.0:8443"
 	}
 
 	keyFile := os.Getenv("SSL_KEY")
@@ -51,10 +51,12 @@ func main() {
 	r.HandleFunc("/health", Health).Methods("GET")
 	r.HandleFunc("/initialise", Initialise).Methods("GET")
 	r.HandleFunc("/seal", Seal).Methods("GET")
+	r.HandleFunc("/unseal", Unseal).Methods("GET")
 	r.HandleFunc("/secrets/message", Message).Methods("POST")
-	r.HandleFunc("/secrets/key", Key).Methods("GET")
+	r.HandleFunc("/secrets/key", Key).Methods("POST")
 	r.HandleFunc("/secrets/share", Share).Methods("POST")
 	r.HandleFunc("/secrets/view", View).Methods("POST")
+	r.HandleFunc("/secrets/update", Update).Methods("POST")
 
 	server := new(http.Server)
 	server.Addr = addr
