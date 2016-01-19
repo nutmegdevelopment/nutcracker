@@ -2,6 +2,8 @@ FROM golang:1.5.3
 
 ENV GOPATH /go
 
-RUN go get github.com/nutmegdevelopment/nutcracker
+COPY . /go/src/github.com/nutmegdevelopment/nutcracker
+
+RUN cd /go/src/github.com/nutmegdevelopment/nutcracker && go get -d ./... && go test
 
 CMD /go/bin/nutcracker
