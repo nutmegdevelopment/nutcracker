@@ -13,7 +13,7 @@ It has a simple JSON api, and requires no configuration other than environment v
 | /unseal          | GET    | key               | Yes                   | Unlock vault so that secrets can be created                        |
 | /seal            | GET    |                   | No                    | Lock vault to prevent secret creation                              |
 | /secrets/message | POST   | name, message     | Yes                   | Create new secret                                                  |
-| /secrets/key     | POST   | readonly          | Yes                   | Create new key.  Set                                                      |
+| /secrets/key     | POST   | admin             | Yes                   | Create new key.  Set the boolean "admin" to true for a key with write access.      |
 | /secrets/share   | POST   | name, keyid       | Yes                   | Share a secret with a key for later retrieval                      |
 | /secrets/update  | POST   | name, message     | Yes                   | Update the content of an existing key            |
 | /secrets/view    | POST   | name              | Yes                   | Retrieve a secret shared with your authentication key |
