@@ -43,8 +43,21 @@ func (p *DB) Connect() (err error) {
 	return d.Error
 }
 
+func (p *DB) refresh() error {
+	err := p.conn.DB().Ping()
+	if err != nil {
+		return p.Connect()
+	}
+	return nil
+}
+
 // AddSecret inserts a new secret into the DB
 func (p *DB) AddSecret(s *secrets.Secret) error {
+
+	if err := p.refresh(); err != nil {
+		return err
+	}
+
 	if s.Root {
 		where := &secrets.Secret{Name: s.Name, Root: true}
 		d := p.conn.Find(&secrets.Secret{}, where)
@@ -92,16 +105,28 @@ func (p *DB) addSecret(s *secrets.Secret) error {
 
 // AddKey inserts a key into the DB
 func (p *DB) AddKey(k *secrets.Key) error {
+	if err := p.refresh(); err != nil {
+		return err
+	}
+
 	return p.conn.FirstOrCreate(k, &secrets.Key{Name: k.Name}).Error
 }
 
 // GetKey selects a key from the database based on values provided in k.
 func (p *DB) GetKey(k *secrets.Key) error {
+	if err := p.refresh(); err != nil {
+		return err
+	}
+
 	return p.conn.Find(k, k).Error
 }
 
 // GetRootSecret returns the latest matching root secret
 func (p *DB) GetRootSecret(s *secrets.Secret) error {
+	if err := p.refresh(); err != nil {
+		return err
+	}
+
 	s.Root = true
 	d := p.conn.Order("id asc").Find(s, s)
 	if d.Error != nil {
@@ -112,6 +137,9 @@ func (p *DB) GetRootSecret(s *secrets.Secret) error {
 
 // GetSharedSecret returns the shared cert linking s and k
 func (p *DB) GetSharedSecret(s *secrets.Secret, k *secrets.Key) error {
+	if err := p.refresh(); err != nil {
+		return err
+	}
 	// We don't use a join due to conflicting columns
 	err := p.GetKey(k)
 	if err != nil {
@@ -129,6 +157,9 @@ func (p *DB) GetSharedSecret(s *secrets.Secret, k *secrets.Key) error {
 
 // UpdateSecret updates a secret by adding a new copy of it to the db.
 func (p *DB) UpdateSecret(s *secrets.Secret) error {
+	if err := p.refresh(); err != nil {
+		return err
+	}
 	// we need a new ID
 	s.ID = 0
 	return p.addSecret(s)
