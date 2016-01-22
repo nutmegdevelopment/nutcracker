@@ -68,39 +68,26 @@ func (p *DB) AddSecret(s *secrets.Secret) error {
 			return d.Error
 		}
 	}
+
+	d := p.conn.Find(&secrets.Key{}, &secrets.Key{Name: s.Key.Name})
+	switch {
+
+	case d.Error == gorm.RecordNotFound:
+		err := p.conn.Create(&s.Key).Error
+		if err != nil {
+			return err
+		}
+
+	case d.Error != nil:
+		return d.Error
+
+	}
+
 	return p.addSecret(s)
 }
 
 func (p *DB) addSecret(s *secrets.Secret) error {
-	tx := p.conn.Begin()
-
-	// Add the key, if missing
-	if s.Key.Name != "" {
-		d := tx.Find(&s.Key)
-		if d.Error == gorm.RecordNotFound {
-
-			d = tx.Create(&s.Key)
-			if d.Error != nil {
-				tx.Rollback()
-				return d.Error
-			}
-
-		} else if d.Error != nil {
-			tx.Rollback()
-			return d.Error
-		}
-
-		s.KeyID = s.Key.ID
-
-	}
-
-	d := tx.Create(s)
-	if d.Error != nil {
-		tx.Rollback()
-		return d.Error
-	}
-
-	return tx.Commit().Error
+	return p.conn.Create(s).Error
 }
 
 // AddKey inserts a key into the DB
@@ -109,7 +96,7 @@ func (p *DB) AddKey(k *secrets.Key) error {
 		return err
 	}
 
-	return p.conn.FirstOrCreate(k, &secrets.Key{Name: k.Name}).Error
+	return p.conn.Create(k).Error
 }
 
 // GetKey selects a key from the database based on values provided in k.
