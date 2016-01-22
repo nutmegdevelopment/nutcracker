@@ -3,6 +3,7 @@ package secrets
 import (
 	"crypto/rand"
 	"errors"
+	"github.com/pborman/uuid"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/secretbox"
@@ -124,7 +125,7 @@ func New(name string, message []byte) (s *Secret, err error) {
 	s = new(Secret)
 
 	// Generate a unique encryption key
-	err = s.Key.New("")
+	err = s.Key.New(uuid.New())
 	if err != nil {
 		return
 	}

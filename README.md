@@ -10,7 +10,7 @@ It has a simple JSON api, and requires no configuration other than environment v
 |------------------|--------|-------------------|-----------------------|--------------------------------------------------------------------|
 | /health          | GET    |                   | No                    | Healthcheck                                                        |
 | /initialise      | GET    |                   | No                    | Set up vault credentials                                           |
-| /unseal          | GET    | key               | Yes                   | Unlock vault so that secrets can be created                        |
+| /unseal          | GET    |                   | Yes                   | Unlock vault so that secrets can be created                        |
 | /seal            | GET    |                   | No                    | Lock vault to prevent secret creation                              |
 | /secrets/message | POST   | name, message     | Yes                   | Create new secret                                                  |
 | /secrets/key     | POST   | admin             | Yes                   | Create new key.  Set the boolean "admin" to true for a key with write access.      |
