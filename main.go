@@ -71,5 +71,4 @@ func main() {
 	server.Addr = addr
 	server.Handler = r
 	log.Error(server.Serve(sock))
-
 }
