@@ -2,12 +2,13 @@ package main
 
 import (
 	"crypto/tls"
+	"net/http"
+	"os"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/nutmegdevelopment/nutcracker/db"
 	"github.com/nutmegdevelopment/nutcracker/postgres"
-	"net/http"
-	"os"
 )
 
 var database db.DB
@@ -17,6 +18,14 @@ func init() {
 }
 
 func main() {
+
+	// Set up a basic http server to stop the TLS handshake log messages.
+	go func() {
+		r80 := mux.NewRouter()
+		http.Handle("/", r80)
+		log.Error(http.ListenAndServe(":8080", nil))
+	}()
+
 	err := database.Connect()
 	if err != nil {
 		log.Fatal(err)
@@ -62,4 +71,5 @@ func main() {
 	server.Addr = addr
 	server.Handler = r
 	log.Error(server.Serve(sock))
+
 }
