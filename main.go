@@ -19,11 +19,18 @@ func init() {
 
 func main() {
 
-	// Set up a basic http server to stop the TLS handshake log messages.
+	// Set up a basic http server for health checks.
 	go func() {
-		r80 := mux.NewRouter()
-		http.Handle("/", r80)
-		log.Error(http.ListenAndServe(":8080", nil))
+		addrHTTP := os.Getenv("LISTEN_HTTP")
+		if addrHTTP == "" {
+			addrHTTP = "0.0.0.0:8080"
+		}
+		rHTTP := mux.NewRouter()
+		rHTTP.HandleFunc("/", Health).Methods("GET")
+		rHTTP.HandleFunc("/health", Health).Methods("GET")
+		http.Handle("/", rHTTP)
+		log.Infof("HTTP server listening on: %s", addrHTTP)
+		http.ListenAndServe(addrHTTP, nil)
 	}()
 
 	err := database.Connect()
@@ -70,5 +77,6 @@ func main() {
 	server := new(http.Server)
 	server.Addr = addr
 	server.Handler = r
+	log.Infof("HTTPS server listening on: %s", addr)
 	log.Error(server.Serve(sock))
 }
