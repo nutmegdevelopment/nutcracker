@@ -8,7 +8,13 @@ container:
     portMappings:
       - containerPort: 8443
 healthChecks:
-  - protocol: TCP
+  -
+    protocol: HTTP
+    path: /health
+    gracePeriodSeconds: 1500
+    intervalSeconds: 15
+    timeoutSeconds: 5
+    maxConsecutiveFailures: 10
 env:
   PGHOST: {{db_host}}
   PGUSER: {{db_user}}
