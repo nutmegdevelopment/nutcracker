@@ -7,8 +7,16 @@ container:
     image: registry.nutmeg.co.uk:8443/nutcracker:{{version}}
     portMappings:
       - containerPort: 8443
+      - containerPort: 8080
 healthChecks:
-  - protocol: TCP
+  -
+    protocol: HTTP
+    path: /health
+    portIndex: 1
+    gracePeriodSeconds: 1500
+    intervalSeconds: 15
+    timeoutSeconds: 5
+    maxConsecutiveFailures: 10
 env:
   PGHOST: {{db_host}}
   PGUSER: {{db_user}}
