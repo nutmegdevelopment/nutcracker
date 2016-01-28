@@ -7,6 +7,7 @@ container:
     image: registry.nutmeg.co.uk:8443/nutcracker:{{version}}
     portMappings:
       - containerPort: 8443
+      - containerPort: 8080
 healthChecks:
   -
     protocol: HTTP
