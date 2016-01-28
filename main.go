@@ -17,21 +17,20 @@ func init() {
 	database = new(postgres.DB)
 }
 
-func main() {
+// Set up a basic http server for health checks.
+func healthCheck() {
+	addr := os.Getenv("LISTEN_HTTP")
+	if addr == "" {
+		addr = "0.0.0.0:8080"
+	}
+	r := mux.NewRouter()
+	r.HandleFunc("/health", Health).Methods("GET")
+	http.Handle("/", r)
+	log.Infof("HTTP server listening on: %s", addr)
+	http.ListenAndServe(addr, nil)
+}
 
-	// Set up a basic http server for health checks.
-	go func() {
-		addrHTTP := os.Getenv("LISTEN_HTTP")
-		if addrHTTP == "" {
-			addrHTTP = "0.0.0.0:8080"
-		}
-		rHTTP := mux.NewRouter()
-		rHTTP.HandleFunc("/", Health).Methods("GET")
-		rHTTP.HandleFunc("/health", Health).Methods("GET")
-		http.Handle("/", rHTTP)
-		log.Infof("HTTP server listening on: %s", addrHTTP)
-		http.ListenAndServe(addrHTTP, nil)
-	}()
+func main() {
 
 	err := database.Connect()
 	if err != nil {
@@ -73,6 +72,8 @@ func main() {
 	r.HandleFunc("/secrets/share", Share).Methods("POST")
 	r.HandleFunc("/secrets/view", View).Methods("POST")
 	r.HandleFunc("/secrets/update", Update).Methods("POST")
+
+	go healthCheck()
 
 	server := new(http.Server)
 	server.Addr = addr
