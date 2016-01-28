@@ -12,6 +12,7 @@ healthChecks:
   -
     protocol: HTTP
     path: /health
+    portIndex: 8080
     gracePeriodSeconds: 1500
     intervalSeconds: 15
     timeoutSeconds: 5
