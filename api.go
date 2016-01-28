@@ -140,7 +140,7 @@ func Message(w http.ResponseWriter, r *http.Request) {
 
 	s, err := secrets.New(request.Name, []byte(request.Message))
 	if err != nil {
-		api.error("Server error", 500)
+		api.error(err.Error(), 500)
 		return
 	}
 
@@ -266,7 +266,7 @@ func Share(w http.ResponseWriter, r *http.Request) {
 	shared, err := secret.Share(key)
 	if err != nil {
 		log.Error(err)
-		api.error("Server error", 500)
+		api.error(err.Error(), 500)
 		return
 	}
 
