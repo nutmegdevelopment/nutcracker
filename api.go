@@ -347,7 +347,7 @@ func View(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("Secret: ", shared.Name, " viewed by: ", key.Name)
 
-	api.message(string(message), 200)
+	api.rawMessage(message, 200)
 }
 
 func Update(w http.ResponseWriter, r *http.Request) {
@@ -458,6 +458,11 @@ func (a *api) message(message string, code int) {
 	data, _ := json.MarshalIndent(&r, "", "  ")
 	a.resp.WriteHeader(code)
 	a.resp.Write(data)
+}
+
+func (a *api) rawMessage(message []byte, code int) {
+	a.resp.WriteHeader(code)
+	a.resp.Write(message)
 }
 
 func (a *api) auth() bool {
