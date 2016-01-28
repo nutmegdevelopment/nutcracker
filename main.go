@@ -79,5 +79,5 @@ func main() {
 	server.Addr = addr
 	server.Handler = r
 	log.Infof("HTTPS server listening on: %s", addr)
-	log.Error(server.Serve(sock))
+	server.Serve(sock)
 }
