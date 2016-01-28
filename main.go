@@ -2,12 +2,13 @@ package main
 
 import (
 	"crypto/tls"
+	"net/http"
+	"os"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/nutmegdevelopment/nutcracker/db"
 	"github.com/nutmegdevelopment/nutcracker/postgres"
-	"net/http"
-	"os"
 )
 
 var database db.DB
@@ -17,6 +18,21 @@ func init() {
 }
 
 func main() {
+
+	// Set up a basic http server for health checks.
+	go func() {
+		addrHTTP := os.Getenv("LISTEN_HTTP")
+		if addrHTTP == "" {
+			addrHTTP = "0.0.0.0:8080"
+		}
+		rHTTP := mux.NewRouter()
+		rHTTP.HandleFunc("/", Health).Methods("GET")
+		rHTTP.HandleFunc("/health", Health).Methods("GET")
+		http.Handle("/", rHTTP)
+		log.Infof("HTTP server listening on: %s", addrHTTP)
+		http.ListenAndServe(addrHTTP, nil)
+	}()
+
 	err := database.Connect()
 	if err != nil {
 		log.Fatal(err)
@@ -61,5 +77,6 @@ func main() {
 	server := new(http.Server)
 	server.Addr = addr
 	server.Handler = r
+	log.Infof("HTTPS server listening on: %s", addr)
 	log.Error(server.Serve(sock))
 }
