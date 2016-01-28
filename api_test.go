@@ -259,9 +259,7 @@ func TestView(t *testing.T) {
 	database = testDb
 
 	View(w, r)
-	res := getResp(w.Body.Bytes())
-	assert.Contains(t, res, "response", "Result should contain response")
-	assert.Equal(t, "testmessage", res["response"])
+	assert.Equal(t, "testmessage", string(w.Body.Bytes()))
 
 }
 
