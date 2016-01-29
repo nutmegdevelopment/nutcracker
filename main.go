@@ -13,6 +13,8 @@ import (
 
 var database db.DB
 
+var urlParams map[string]string
+
 func init() {
 	database = new(postgres.DB)
 }
@@ -71,7 +73,7 @@ func main() {
 	r.HandleFunc("/secrets/key", Key).Methods("POST")
 	r.HandleFunc("/secrets/share", Share).Methods("POST")
 	r.HandleFunc("/secrets/view", View).Methods("POST")
-	r.HandleFunc("/secrets/view/{secretId}/{secretKey}/{messageName}", ViewGet).Methods("GET")
+	r.HandleFunc("/secrets/view/{secretID}/{secretKey}/{messageName}", View).Methods("GET")
 	r.HandleFunc("/secrets/update", Update).Methods("POST")
 
 	go healthCheck()
