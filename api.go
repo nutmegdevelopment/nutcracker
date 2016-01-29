@@ -4,12 +4,15 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"net/http"
+
 	log "github.com/Sirupsen/logrus"
+	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	"github.com/nutmegdevelopment/nutcracker/secrets"
 	"github.com/pborman/uuid"
 	"golang.org/x/crypto/curve25519"
-	"net/http"
 )
 
 func Health(w http.ResponseWriter, r *http.Request) {
@@ -283,6 +286,29 @@ func Share(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func ViewGet(w http.ResponseWriter, r *http.Request) {
+	urlVars := mux.Vars(r)
+	secretId := urlVars["secretId"]
+	secretKeyEncoded := urlVars["secretKey"]
+	messageName := urlVars["messageName"]
+
+	// Decode the base64 encoded secretKey.
+	secretKey, err := base64.StdEncoding.DecodeString(secretKeyEncoded)
+	if err != nil {
+		api := newAPI(w, r)
+		api.error("Unable to base64 decode secret key", 500)
+		return
+	}
+
+	// Set the expected Header parameters.
+	r.Header.Set("X-Secret-Key", string(secretKey))
+	r.Header.Set("X-Secret-ID", secretId)
+	r.Header.Set("Body", fmt.Sprintf("{\"name\": \"%s\"}", messageName))
+
+	// Call the standard view method.
+	View(w, r)
+}
+
 func View(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 
@@ -293,8 +319,10 @@ func View(w http.ResponseWriter, r *http.Request) {
 
 	request, err := api.read()
 	if err != nil {
-		api.error("Bad request", 400)
-		return
+		// TODO: how best to handle this...
+		log.Infof("Error occured executing api.read(): %s", err.Error())
+		//api.error("Bad request", 400)
+		//return
 	}
 
 	root := new(secrets.Secret)
