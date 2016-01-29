@@ -300,10 +300,8 @@ func View(w http.ResponseWriter, r *http.Request) {
 
 	request, err := api.read()
 	if err != nil {
-		// TODO: how best to handle this...
-		log.Infof("Error occured executing api.read(): %s", err.Error())
-		//api.error("Bad request", 400)
-		//return
+		api.error("Bad request", 400)
+		return
 	}
 
 	root := new(secrets.Secret)
