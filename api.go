@@ -479,24 +479,24 @@ func (a *api) rawMessage(message []byte, code int) {
 func (a *api) auth() bool {
 	var err error
 
-	k := new(secrets.Key)
-	secretID := a.req.Header.Get("X-Secret-ID")
-	if secretID == "" {
-		secretID = urlParams["secretID"]
-	}
-	k.Name = secretID
-	a.keyID = k.Name
+	var secretID string
+	var secretKey string
 
-	secretKey := a.req.Header.Get("X-Secret-Key")
-	if secretKey == "" {
-		// Decode the base64 encoded secretKey.
+	if a.req.Method == "GET" {
+		secretID = urlParams["secretID"]
 		secretKeySlice, err := base64.StdEncoding.DecodeString(urlParams["secretKey"])
-		secretKey = string(secretKeySlice)
 		if err != nil {
-			//a.error("Unable to base64 decode secret key", 500)
 			return false
 		}
+		secretKey = string(secretKeySlice)
+	} else {
+		secretID = a.req.Header.Get("X-Secret-ID")
+		secretKey = a.req.Header.Get("X-Secret-Key")
 	}
+
+	k := new(secrets.Key)
+	k.Name = secretID
+	a.keyID = k.Name
 	a.key, err = base64.StdEncoding.DecodeString(
 		secretKey)
 	if err != nil {
