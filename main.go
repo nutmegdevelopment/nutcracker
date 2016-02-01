@@ -13,8 +13,6 @@ import (
 
 var database db.DB
 
-var urlParams map[string]string
-
 func init() {
 	database = new(postgres.DB)
 }
