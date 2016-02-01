@@ -34,17 +34,28 @@ If you are passing the secretkey and secretid on the URL using the /secrets/view
 
 To do this you can:
 
-```echo "my-secret-key-string" | openssl base64```
+```
+echo "my-secret-key-string" | openssl base64
+```
 
 For example, if your key was "your-key" and your secret id was "bc58c7f9-16a3-4869-b27f-1fb3330ada63" and your secret key was "/tNxdZ0GslQYtM7LfyQA/yYm3wPY+EVsLGW1cyPSW+E="
 
-```echo "/tNxdZ0GslQYtM7LfyQA/yYm3wPY+EVsLGW1cyPSW+E=" | openssl base64```
+```
+echo "/tNxdZ0GslQYtM7LfyQA/yYm3wPY+EVsLGW1cyPSW+E=" | openssl base64
+```
 
 Would give you a base64 encoded string of:
 
-```L3ROeGRaMEdzbFFZdE03TGZ5UUEveVltM3dQWStFVnNMR1cxY3lQU1crRT0K```
+```
+L3ROeGRaMEdzbFFZdE03TGZ5UUEveVltM3dQWStFVnNMR1cxY3lQU1crRT0K
+```
 
-With a resulting URL of: /secrets/view/your-key?secretid=bc58c7f9-16a3-4869-b27f-1fb3330ada63&secretkey=L3ROeGRaMEdzbFFZdE03TGZ5UUEveVltM3dQWStFVnNMR1cxY3lQU1crRT0K
+With a resulting URL of:
+
+```
+/secrets/view/your-key?secretid=bc58c7f9-16a3-4869-b27f-1fb3330ada63&secretkey=L3ROeGRaMEdzbFFZdE03TGZ5UUEveVltM3dQWStFVnNMR1cxY3lQU1crRT0K
+```
+
 
 ## Configuration
 
