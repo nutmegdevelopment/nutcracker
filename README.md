@@ -6,17 +6,20 @@ It has a simple JSON api, and requires no configuration other than environment v
 
 ## API documentation
 
-| URL              | Method | Required elements | Auth header required? | Description                                                        |
-|------------------|--------|-------------------|-----------------------|--------------------------------------------------------------------|
-| /health          | GET    |                   | No                    | Healthcheck                                                        |
-| /initialise      | GET    |                   | No                    | Set up vault credentials                                           |
-| /unseal          | GET    |                   | Yes                   | Unlock vault so that secrets can be created                        |
-| /seal            | GET    |                   | No                    | Lock vault to prevent secret creation                              |
-| /secrets/message | POST   | name, message     | Yes                   | Create new secret                                                  |
-| /secrets/key     | POST   | admin             | Yes                   | Create new key.  Set the boolean "admin" to true for a key with write access.      |
-| /secrets/share   | POST   | name, keyid       | Yes                   | Share a secret with a key for later retrieval                      |
-| /secrets/update  | POST   | name, message     | Yes                   | Update the content of an existing key            |
-| /secrets/view    | POST   | name              | Yes                   | Retrieve a secret shared with your authentication key |
+| URL                     | Method | Required elements | Auth header required? | Description                                                        |
+|-------------------------|--------|-------------------|-----------------------|--------------------------------------------------------------------|
+| /health                 | GET    |                   | No                    | Healthcheck                                                        |
+| /initialise             | GET    |                   | No                    | Set up vault credentials                                           |
+| /unseal                 | GET    |                   | Yes                   | Unlock vault so that secrets can be created                        |
+| /seal                   | GET    |                   | No                    | Lock vault to prevent secret creation                              |
+| /secrets/message        | POST   | name, message     | Yes                   | Create new secret                                                  |
+| /secrets/key            | POST   | admin             | Yes                   | Create new key.  Set the boolean "admin" to true for a key with write access.      |
+| /secrets/share          | POST   | name, keyid       | Yes                   | Share a secret with a key for later retrieval                      |
+| /secrets/update         | POST   | name, message     | Yes                   | Update the content of an existing key                              |
+| /secrets/view           | POST   | name              | Yes                   | Retrieve a secret shared with your authentication key              |
+| /secrets/view/{name}    | GET    | name, secretkey,  | No                    | Retrieve a secret shared with your authentication key where {name} |
+|                         |        | secretid          |                       | is the keyname and secretid and secretkey are url parameters. e.g. |
+|                         |        |                   |                       | /secrets/view/name?secretid=...&secretkey=... (see authentication) |
 
 ## Authentication
 
@@ -28,6 +31,22 @@ Authentication for calls that require it is done by including the following head
 ```X-Secret-ID: your key name```
 
 ```X-Secret-Key: your secret key```
+
+If you are passing the secretkey and secretid on the URL using the /secrets/view/{name} API option then you will need to base64 encode the secretkey.
+
+To do this you can:
+
+```echo "my-secret-key-string" | openssl base64```
+
+For example, if your key was "your-key" and your secret id was "bc58c7f9-16a3-4869-b27f-1fb3330ada63" and your secret key was "/tNxdZ0GslQYtM7LfyQA/yYm3wPY+EVsLGW1cyPSW+E="
+
+```echo "/tNxdZ0GslQYtM7LfyQA/yYm3wPY+EVsLGW1cyPSW+E=" | openssl base64```
+
+Would give you a base64 encoded string of:
+
+```L3ROeGRaMEdzbFFZdE03TGZ5UUEveVltM3dQWStFVnNMR1cxY3lQU1crRT0K```
+
+With a resulting URL of: /secrets/view/your-key?secretid=bc58c7f9-16a3-4869-b27f-1fb3330ada63&secretkey=L3ROeGRaMEdzbFFZdE03TGZ5UUEveVltM3dQWStFVnNMR1cxY3lQU1crRT0K
 
 ## Configuration
 
@@ -67,4 +86,3 @@ View the secret with the read-only key:
 
 curl -k -H 'X-Secret-ID: fed6f3b0-2eaf-440f-bfae-fe0100604c48' -H 'X-Secret-Key: RcyRMobQvys4NWvHDZxUFnKa/qggWRqosRhN120exT0=' https://localhost:8080/secrets/view -d '{"name":"test"}'
 ```
-

@@ -71,7 +71,7 @@ func main() {
 	r.HandleFunc("/secrets/key", Key).Methods("POST")
 	r.HandleFunc("/secrets/share", Share).Methods("POST")
 	r.HandleFunc("/secrets/view", View).Methods("POST")
-	r.HandleFunc("/secrets/view/{secretID}/{secretKey}/{messageName}", View).Methods("GET")
+	r.HandleFunc("/secrets/view/{messageName}", View).Queries("secretid", "{secretid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}}", "secretkey", "{secretkey:[a-zA-Z0-9_-]+}").Methods("GET")
 	r.HandleFunc("/secrets/update", Update).Methods("POST")
 
 	go healthCheck()

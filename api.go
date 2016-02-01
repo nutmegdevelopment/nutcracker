@@ -288,11 +288,6 @@ func Share(w http.ResponseWriter, r *http.Request) {
 func View(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 
-	// Load the URL params if this is a GET request.
-	if r.Method == "GET" {
-		api.urlParams = mux.Vars(r)
-	}
-
 	if !api.auth() {
 		api.error("Unauthorized", 401)
 		return
@@ -426,12 +421,11 @@ type Request struct {
 }
 
 type api struct {
-	req       *http.Request
-	resp      http.ResponseWriter
-	keyID     string
-	key       []byte
-	admin     bool
-	urlParams map[string]string
+	req   *http.Request
+	resp  http.ResponseWriter
+	keyID string
+	key   []byte
+	admin bool
 }
 
 func newAPI(w http.ResponseWriter, r *http.Request) *api {
@@ -443,7 +437,8 @@ func newAPI(w http.ResponseWriter, r *http.Request) *api {
 
 func (a *api) read() (req Request, err error) {
 	if a.req.Method == "GET" {
-		req.Name = a.urlParams["messageName"]
+		urlParams := mux.Vars(a.req)
+		req.Name = urlParams["messageName"]
 	} else {
 		defer a.req.Body.Close()
 		dec := json.NewDecoder(a.req.Body)
@@ -484,8 +479,8 @@ func (a *api) auth() bool {
 	var secretKey string
 
 	if a.req.Method == "GET" {
-		secretID = a.urlParams["secretID"]
-		secretKeySlice, err := base64.StdEncoding.DecodeString(a.urlParams["secretKey"])
+		secretID = a.req.FormValue("secretid")
+		secretKeySlice, err := base64.StdEncoding.DecodeString(a.req.FormValue("secretkey"))
 		if err != nil {
 			return false
 		}
