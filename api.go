@@ -480,14 +480,15 @@ func (a *api) auth() bool {
 
 	if a.req.Method == "GET" {
 		secretID = a.req.FormValue("secretid")
-		secretKeySlice, err := base64.StdEncoding.DecodeString(a.req.FormValue("secretkey"))
-		if err != nil {
-			return false
-		}
-		secretKey = string(secretKeySlice)
+		secretKey = a.req.FormValue("secretkey")
 	} else {
 		secretID = a.req.Header.Get("X-Secret-ID")
 		secretKey = a.req.Header.Get("X-Secret-Key")
+	}
+
+	if secretIDRegex.MatchString(secretID) != true || secretKeyRegex.MatchString(secretKey) != true {
+		log.Error("Invalid auth credential format.")
+		return false
 	}
 
 	k := new(secrets.Key)

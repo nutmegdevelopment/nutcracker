@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"net/http"
 	"os"
+	"regexp"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
@@ -13,8 +14,15 @@ import (
 
 var database db.DB
 
+var secretIDRegex *regexp.Regexp
+var secretKeyRegex *regexp.Regexp
+
 func init() {
 	database = new(postgres.DB)
+
+	// Compile credential checking regex patterns.
+	secretIDRegex = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	secretKeyRegex = regexp.MustCompile(`^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$`)
 }
 
 // Set up a basic http server for health checks.
@@ -71,7 +79,7 @@ func main() {
 	r.HandleFunc("/secrets/key", Key).Methods("POST")
 	r.HandleFunc("/secrets/share", Share).Methods("POST")
 	r.HandleFunc("/secrets/view", View).Methods("POST")
-	r.HandleFunc("/secrets/view/{messageName}", View).Queries("secretid", "{secretid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}}", "secretkey", "{secretkey:[a-zA-Z0-9_-]+}").Methods("GET")
+	r.HandleFunc("/secrets/view/{messageName}", View).Queries("secretid", "", "secretkey", "").Methods("GET")
 	r.HandleFunc("/secrets/update", Update).Methods("POST")
 
 	go healthCheck()
