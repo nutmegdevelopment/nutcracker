@@ -12,7 +12,8 @@ import (
 )
 
 var master *[32]byte
-var MasterKeyName = "master"
+
+const MasterKeyName = "master"
 
 func init() {
 	master = new([32]byte)

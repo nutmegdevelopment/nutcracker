@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"regexp"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
@@ -13,6 +14,15 @@ import (
 	"github.com/pborman/uuid"
 	"golang.org/x/crypto/curve25519"
 )
+
+var secretIDRegex *regexp.Regexp
+var secretKeyRegex *regexp.Regexp
+
+func init() {
+	// Compile credential checking regex patterns.
+	secretIDRegex = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	secretKeyRegex = regexp.MustCompile(`^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$`)
+}
 
 func Health(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
