@@ -4,13 +4,25 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
+	"regexp"
+
 	log "github.com/Sirupsen/logrus"
+	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	"github.com/nutmegdevelopment/nutcracker/secrets"
 	"github.com/pborman/uuid"
 	"golang.org/x/crypto/curve25519"
-	"net/http"
 )
+
+var secretIDRegex *regexp.Regexp
+var secretKeyRegex *regexp.Regexp
+
+func init() {
+	// Compile credential checking regex patterns.
+	secretIDRegex = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	secretKeyRegex = regexp.MustCompile(`^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$`)
+}
 
 func Health(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
@@ -25,7 +37,7 @@ func Initialise(w http.ResponseWriter, r *http.Request) {
 
 	// Check for an existing master secret
 	master := new(secrets.Secret)
-	master.Name = "master"
+	master.Name = secrets.MasterKeyName
 
 	err := database.GetRootSecret(master)
 	switch err {
@@ -72,7 +84,7 @@ func Unseal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	master := new(secrets.Secret)
-	master.Name = "master"
+	master.Name = secrets.MasterKeyName
 
 	err := database.GetRootSecret(master)
 	switch err {
@@ -434,9 +446,14 @@ func newAPI(w http.ResponseWriter, r *http.Request) *api {
 }
 
 func (a *api) read() (req Request, err error) {
-	defer a.req.Body.Close()
-	dec := json.NewDecoder(a.req.Body)
-	err = dec.Decode(&req)
+	if a.req.Method == "GET" {
+		urlParams := mux.Vars(a.req)
+		req.Name = urlParams["messageName"]
+	} else {
+		defer a.req.Body.Close()
+		dec := json.NewDecoder(a.req.Body)
+		err = dec.Decode(&req)
+	}
 	return
 }
 
@@ -469,11 +486,31 @@ func (a *api) auth() bool {
 	var err error
 
 	k := new(secrets.Key)
-	k.Name = a.req.Header.Get("X-Secret-ID")
-	a.keyID = k.Name
 
+	var secretKey string
+
+	// Grab the credentials, look in the header first and fall back to the query string.
+	if k.Name = a.req.Header.Get("X-Secret-ID"); k.Name == "" {
+		k.Name = a.req.FormValue("secretid")
+	}
+	if secretKey = a.req.Header.Get("X-Secret-Key"); secretKey == "" {
+		secretKey = a.req.FormValue("secretkey")
+	}
+
+	// If the master key has been used then just check the key, else check both.
+	if k.Name == secrets.MasterKeyName {
+		if secretKeyRegex.MatchString(secretKey) != true {
+			log.Error("Invalid auth credential format.")
+			return false
+		}
+	} else if secretIDRegex.MatchString(k.Name) != true || secretKeyRegex.MatchString(secretKey) != true {
+		log.Error("Invalid auth credential format.")
+		return false
+	}
+
+	a.keyID = k.Name
 	a.key, err = base64.StdEncoding.DecodeString(
-		a.req.Header.Get("X-Secret-Key"))
+		secretKey)
 	if err != nil {
 		return false
 	}

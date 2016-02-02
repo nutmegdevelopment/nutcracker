@@ -3,14 +3,17 @@ package secrets
 import (
 	"crypto/rand"
 	"errors"
+	"io"
+
 	"github.com/pborman/uuid"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/secretbox"
-	"io"
 )
 
 var master *[32]byte
+
+const MasterKeyName = "master"
 
 func init() {
 	master = new([32]byte)
@@ -22,7 +25,7 @@ func Initialise() (masterKey *Secret, err error) {
 	masterKey = new(Secret)
 
 	// We can't use masterKey.New() here
-	masterKey.Name = "master"
+	masterKey.Name = MasterKeyName
 	masterKey.Root = true
 
 	if masterKey.newNonce() != nil {
@@ -36,7 +39,7 @@ func Initialise() (masterKey *Secret, err error) {
 	}
 
 	// Create an encryption key
-	err = masterKey.Key.New("master")
+	err = masterKey.Key.New(MasterKeyName)
 	if err != nil {
 		return
 	}
@@ -117,7 +120,7 @@ func New(name string, message []byte) (s *Secret, err error) {
 
 	defer Zero(message)
 
-	if name == "master" {
+	if name == MasterKeyName {
 		err = errors.New("Cannot create a new master key")
 		return
 	}

@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/jinzhu/gorm"
 	"github.com/nutmegdevelopment/nutcracker/db/mocks"
@@ -11,9 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/crypto/curve25519"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 )
 
 func init() {
@@ -34,7 +35,7 @@ func TestAuth(t *testing.T) {
 	a := new(api)
 	a.req = new(http.Request)
 	a.req.Header = make(http.Header)
-	a.req.Header.Set("X-Secret-ID", "testkey")
+	a.req.Header.Set("X-Secret-ID", "968cd432-c97a-11e5-9956-625662870761")
 	a.req.Header.Set("X-Secret-Key", base64.StdEncoding.EncodeToString(authKey[:]))
 
 	testDb := new(mocks.DB)
@@ -48,7 +49,7 @@ func TestAuth(t *testing.T) {
 	a = new(api)
 	a.req = new(http.Request)
 	a.req.Header = make(http.Header)
-	a.req.Header.Set("X-Secret-ID", "testkey")
+	a.req.Header.Set("X-Secret-ID", "968cd432-c97a-11e5-9956-625662870761")
 	a.req.Header.Set("X-Secret-Key", base64.StdEncoding.EncodeToString([]byte("fail")))
 
 	testDb = new(mocks.DB)
@@ -218,7 +219,7 @@ func TestView(t *testing.T) {
 	assert.Nil(t, err, "Should not return error")
 
 	key := new(secrets.Key)
-	err = key.New("testkey")
+	err = key.New("968cd432-c97a-11e5-9956-625662870761")
 	priv := key.Display()
 	assert.Nil(t, err, "Should not return error")
 
@@ -239,7 +240,7 @@ func TestView(t *testing.T) {
 	testDb.On(
 		"GetSharedSecret",
 		&secrets.Secret{Name: "testsecret"},
-		&secrets.Key{Name: "testkey"}).Run(
+		&secrets.Key{Name: "968cd432-c97a-11e5-9956-625662870761"}).Run(
 		func(args mock.Arguments) {
 			args.Get(0).(*secrets.Secret).Name = shared.Name
 			args.Get(0).(*secrets.Secret).Nonce = shared.Nonce
@@ -324,15 +325,15 @@ func authSetup(testDb *mocks.DB, req *http.Request, key []byte) {
 
 	if req != nil {
 		req.Header = make(http.Header)
-		req.Header.Set("X-Secret-ID", "testkey")
+		req.Header.Set("X-Secret-ID", "968cd432-c97a-11e5-9956-625662870761")
 		req.Header.Set("X-Secret-Key", base64.StdEncoding.EncodeToString(priv[:]))
 	}
 
 	pub := new([32]byte)
 	curve25519.ScalarBaseMult(pub, priv)
 
-	testDb.On("GetKey", &secrets.Key{Name: "testkey"}).Run(func(args mock.Arguments) {
-		args.Get(0).(*secrets.Key).Name = "testkey"
+	testDb.On("GetKey", &secrets.Key{Name: "968cd432-c97a-11e5-9956-625662870761"}).Run(func(args mock.Arguments) {
+		args.Get(0).(*secrets.Key).Name = "968cd432-c97a-11e5-9956-625662870761"
 		args.Get(0).(*secrets.Key).Public = pub[:]
 	}).Return(nil)
 }
