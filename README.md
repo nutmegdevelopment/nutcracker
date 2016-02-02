@@ -30,12 +30,12 @@ Authentication for calls that require it is done by including the following head
 
 ```X-Secret-Key: your secret key```
 
-If you are passing the secretkey and secretid on the URL using the /secrets/view/{name} API option then you will need to make sure any '+' signs in the secret key are url escaped.
+If you are passing the secretkey and secretid on the URL using the /secrets/view/{name} API option then you will need to make sure any '+' or '=' signs in the secret key are url escaped.
 
 To do this you can:
 
 ```
-echo "my+secret+key+string" | sed s/\+/\%2B/g
+echo "my+secret+key+string" | sed s/\+/\%2B/g | sed s/\=/\%3D/g
 ```
 
 For example, if your key was "your-key" and your secret id was "bc58c7f9-16a3-4869-b27f-1fb3330ada63" and your secret key was "/tNxdZ0GslQYtM7LfyQA/yYm3wPY+EVsLGW1cyPSW+E="
@@ -47,13 +47,13 @@ echo "/tNxdZ0GslQYtM7LfyQA/yYm3wPY+EVsLGW1cyPSW+E=" | sed s/\+/\%2B/g
 Would give you a url escaped secret key of:
 
 ```
-/tNxdZ0GslQYtM7LfyQA/yYm3wPY%2BEVsLGW1cyPSW%2BE=
+/tNxdZ0GslQYtM7LfyQA/yYm3wPY%2BEVsLGW1cyPSW%2BE%3D
 ```
 
 With a resulting URL of:
 
 ```
-/secrets/view/your-key?secretid=bc58c7f9-16a3-4869-b27f-1fb3330ada63&secretkey=/tNxdZ0GslQYtM7LfyQA/yYm3wPY%2BEVsLGW1cyPSW%2BE=
+/secrets/view/your-key?secretid=bc58c7f9-16a3-4869-b27f-1fb3330ada63&secretkey=/tNxdZ0GslQYtM7LfyQA/yYm3wPY%2BEVsLGW1cyPSW%2BE%3D
 ```
 
 

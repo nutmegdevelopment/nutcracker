@@ -27,7 +27,7 @@ func Initialise(w http.ResponseWriter, r *http.Request) {
 
 	// Check for an existing master secret
 	master := new(secrets.Secret)
-	master.Name = "master"
+	master.Name = secrets.MasterKeyName
 
 	err := database.GetRootSecret(master)
 	switch err {
@@ -74,7 +74,7 @@ func Unseal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	master := new(secrets.Secret)
-	master.Name = "master"
+	master.Name = secrets.MasterKeyName
 
 	err := database.GetRootSecret(master)
 	switch err {
@@ -475,24 +475,29 @@ func (a *api) rawMessage(message []byte, code int) {
 func (a *api) auth() bool {
 	var err error
 
-	var secretID string
+	k := new(secrets.Key)
+
 	var secretKey string
 
-	if a.req.Method == "GET" {
-		secretID = a.req.FormValue("secretid")
+	// Grab the credentials, look in the header first and fall back to the query string.
+	if k.Name = a.req.Header.Get("X-Secret-ID"); k.Name == "" {
+		k.Name = a.req.FormValue("secretid")
+	}
+	if secretKey = a.req.Header.Get("X-Secret-Key"); secretKey == "" {
 		secretKey = a.req.FormValue("secretkey")
-	} else {
-		secretID = a.req.Header.Get("X-Secret-ID")
-		secretKey = a.req.Header.Get("X-Secret-Key")
 	}
 
-	if secretIDRegex.MatchString(secretID) != true || secretKeyRegex.MatchString(secretKey) != true {
+	// If the master key has been used then just check the key, else check both.
+	if k.Name == secrets.MasterKeyName {
+		if secretKeyRegex.MatchString(secretKey) != true {
+			log.Error("Invalid auth credential format.")
+			return false
+		}
+	} else if secretIDRegex.MatchString(k.Name) != true || secretKeyRegex.MatchString(secretKey) != true {
 		log.Error("Invalid auth credential format.")
 		return false
 	}
 
-	k := new(secrets.Key)
-	k.Name = secretID
 	a.keyID = k.Name
 	a.key, err = base64.StdEncoding.DecodeString(
 		secretKey)
