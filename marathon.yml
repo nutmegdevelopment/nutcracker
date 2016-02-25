@@ -22,3 +22,5 @@ env:
   PGUSER: {{db_user}}
   PGPASSWORD: {{db_pass}}
   PGDATABASE: {{db_schema}}
+labels:
+  tags: internal
