@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	"github.com/nutmegdevelopment/nutcracker/db/mocks"
 	"github.com/nutmegdevelopment/nutcracker/secrets"
@@ -24,6 +26,9 @@ func init() {
 
 func TestHealth(t *testing.T) {
 	w := httptest.NewRecorder()
+    testDb := new(mocks.DB)
+    testDb.On("Ping").Return(nil)
+    database = testDb
 	Health(w, nil)
 	res := getResp(w.Body.Bytes())
 	assert.Contains(t, res, "response", "Result should contain response")
@@ -125,7 +130,7 @@ func TestUnseal(t *testing.T) {
 func TestMessage(t *testing.T) {
 	w := httptest.NewRecorder()
 
-	req := Request{Name: "test", Message: "message"}
+	req := request{Name: "test", Message: "message"}
 	data, err := json.Marshal(req)
 	assert.Nil(t, err, "Should not return error")
 
@@ -149,7 +154,7 @@ func TestMessage(t *testing.T) {
 func TestKey(t *testing.T) {
 	w := httptest.NewRecorder()
 
-	req := Request{Admin: false}
+	req := request{Admin: false}
 	data, err := json.Marshal(req)
 	assert.Nil(t, err, "Should not return error")
 
@@ -178,7 +183,7 @@ func TestShare(t *testing.T) {
 	pub := new([32]byte)
 	curve25519.ScalarBaseMult(pub, &authKey)
 
-	req := Request{Name: "testsecret", KeyID: "1-2-3-4"}
+	req := request{Name: "testsecret", KeyID: "1-2-3-4"}
 	data, err := json.Marshal(req)
 	assert.Nil(t, err, "Should not return error")
 
@@ -226,7 +231,7 @@ func TestView(t *testing.T) {
 	shared, err := root.Share(key)
 	assert.Nil(t, err, "Should not return error")
 
-	req := Request{Name: "testsecret"}
+	req := request{Name: "testsecret"}
 	data, err := json.Marshal(req)
 	assert.Nil(t, err, "Should not return error")
 
@@ -264,13 +269,68 @@ func TestView(t *testing.T) {
 
 }
 
+func TestListSecret(t *testing.T) {
+	w := httptest.NewRecorder()
+
+	m := mux.NewRouter()
+	addRoutes(m)
+
+	secretList := make([]secrets.Secret, 20)
+
+	for i := range secretList {
+		s, err := secrets.New(fmt.Sprintf("secret-%d", i), []byte("testmessage"))
+		secretList[i] = *s
+		assert.Nil(t, err, "Should not return error")
+	}
+
+	testDb := new(mocks.DB)
+
+	r, err := http.NewRequest("GET", "/secrets/list/secrets", nil)
+	assert.Nil(t, err, "Should not return error")
+
+	key := new(secrets.Key)
+	err = key.New("968cd432-c97a-11e5-9956-625662870761")
+	priv := key.Display()
+	assert.Nil(t, err, "Should not return error")
+
+	authSetup(testDb, r, priv)
+
+	pos := 0
+
+	testDb.On("ListSecrets", mock.Anything).Return(func(n int) ([]secrets.Secret, error) {
+		start := pos
+		end := pos + n
+		if start >= len(secretList) {
+			start = len(secretList)
+		}
+		if end >= len(secretList) {
+			end = len(secretList)
+		}
+		pos = end
+		return secretList[start:end], nil
+	})
+
+	database = testDb
+
+	m.ServeHTTP(w, r)
+
+	expected, err := json.MarshalIndent(secretList[0:10], "", "  ")
+	assert.Nil(t, err, "Should not return error")
+	buf, err := json.MarshalIndent(secretList[10:], "", "  ")
+	assert.Nil(t, err, "Should not return error")
+	expected = append(expected, buf...)
+
+	assert.Equal(t, expected, w.Body.Bytes())
+    
+}
+
 func TestUpdate(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	secret, err := secrets.New("testsecret", []byte("testmessage"))
 	assert.Nil(t, err, "Should not return error")
 
-	req := Request{Name: "testsecret", Message: "newmessage"}
+	req := request{Name: "testsecret", Message: "newmessage"}
 	data, err := json.Marshal(req)
 	assert.Nil(t, err, "Should not return error")
 
