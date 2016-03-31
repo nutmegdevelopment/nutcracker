@@ -51,6 +51,10 @@ func (p *DB) refresh() error {
 	return nil
 }
 
+func (p *DB) Ping() (err error)  {
+    return p.conn.DB().Ping()
+}
+
 // AddSecret inserts a new secret into the DB
 func (p *DB) AddSecret(s *secrets.Secret) error {
 
@@ -150,4 +154,53 @@ func (p *DB) UpdateSecret(s *secrets.Secret) error {
 	// we need a new ID
 	s.ID = 0
 	return p.addSecret(s)
+}
+
+// ListSecrets returns an iterator function that walks through all secrets in the database.
+// The iterator takes an integer argument, which is the maximum number of results to return per iteration. 
+func (p *DB) ListSecrets() (func(int) ([]secrets.Secret, error)) {
+    pos := 0
+    return func(n int) (res []secrets.Secret, err error) {
+        if err := p.refresh(); err != nil {
+		return nil, err
+	}
+    s := new(secrets.Secret)
+    s.Root = false
+    rows, err := p.conn.Order("id asc").Limit(n).Offset(pos).Find(s).Rows()
+    for rows.Next() {
+        out := new(secrets.Secret)
+        err = rows.Scan(out)
+        if err != nil {
+            return
+        }
+        res = append(res, *out)
+    }
+    rows.Close()
+    pos = len(res)
+    return
+    }
+}
+
+// ListKeys returns an iterator function that walks through all keys in the database.
+// The iterator takes an integer argument, which is the maximum number of results to return per iteration.
+func (p *DB) ListKeys() (func(int) ([]secrets.Key, error)) {
+     pos := 0
+    return func(n int) (res []secrets.Key, err error) {
+        if err := p.refresh(); err != nil {
+		return nil, err
+	}
+    k := new(secrets.Key)
+    rows, err := p.conn.Order("id asc").Limit(n).Offset(pos).Find(k).Rows()
+    for rows.Next() {
+        out := new(secrets.Key)
+        err = rows.Scan(out)
+        if err != nil {
+            return
+        }
+        res = append(res, *out)
+    }
+    rows.Close()
+    pos = len(res)
+    return
+    }
 }

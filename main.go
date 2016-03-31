@@ -30,6 +30,20 @@ func healthCheck() {
 	http.ListenAndServe(addr, nil)
 }
 
+func addRoutes(r *mux.Router) {
+    r.HandleFunc("/health", Health).Methods("GET")
+	r.HandleFunc("/initialise", Initialise).Methods("GET")
+	r.HandleFunc("/seal", Seal).Methods("GET")
+	r.HandleFunc("/unseal", Unseal).Methods("GET")
+	r.HandleFunc("/secrets/message", Message).Methods("POST")
+	r.HandleFunc("/secrets/key", Key).Methods("POST")
+	r.HandleFunc("/secrets/share", Share).Methods("POST")
+	r.HandleFunc("/secrets/view", View).Methods("POST")
+	r.HandleFunc("/secrets/view/{messageName}", View).Queries("secretid", "", "secretkey", "").Methods("GET")
+	r.HandleFunc("/secrets/list/{type}", List).Methods("GET")
+	r.HandleFunc("/secrets/update", Update).Methods("POST")
+}
+
 func main() {
 
 	err := database.Connect()
@@ -62,17 +76,8 @@ func main() {
 	}
 
 	r := mux.NewRouter()
-
-	r.HandleFunc("/health", Health).Methods("GET")
-	r.HandleFunc("/initialise", Initialise).Methods("GET")
-	r.HandleFunc("/seal", Seal).Methods("GET")
-	r.HandleFunc("/unseal", Unseal).Methods("GET")
-	r.HandleFunc("/secrets/message", Message).Methods("POST")
-	r.HandleFunc("/secrets/key", Key).Methods("POST")
-	r.HandleFunc("/secrets/share", Share).Methods("POST")
-	r.HandleFunc("/secrets/view", View).Methods("POST")
-	r.HandleFunc("/secrets/view/{messageName}", View).Queries("secretid", "", "secretkey", "").Methods("GET")
-	r.HandleFunc("/secrets/update", Update).Methods("POST")
+    addRoutes(r)
+	
 
 	go healthCheck()
 

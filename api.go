@@ -15,6 +15,8 @@ import (
 	"golang.org/x/crypto/curve25519"
 )
 
+const pageSize int = 10
+
 var secretIDRegex *regexp.Regexp
 var secretKeyRegex *regexp.Regexp
 
@@ -24,9 +26,15 @@ func init() {
 	secretKeyRegex = regexp.MustCompile(`^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$`)
 }
 
+// Health returns 200 if the service is running and can connect to the DB.
 func Health(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
-	api.message("OK", 200)
+	err := database.Ping()
+	if err == nil {
+		api.message("OK", 200)
+	} else {
+		api.error("Cannot connect to the DB", 500)
+	}
 	return
 }
 
@@ -75,6 +83,7 @@ func Initialise(w http.ResponseWriter, r *http.Request) {
 		201)
 }
 
+// Unseal opens the vault for writing
 func Unseal(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 
@@ -116,6 +125,7 @@ func Unseal(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// Seal locks the vault into read-only mode
 func Seal(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 
@@ -127,6 +137,7 @@ func Seal(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// Message adds a new secret message to the vault
 func Message(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 
@@ -175,6 +186,7 @@ func Message(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// Key adds a new secret key to the vault
 func Key(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 
@@ -221,6 +233,7 @@ func Key(w http.ResponseWriter, r *http.Request) {
 		201)
 }
 
+// Share grants a key access to a message
 func Share(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 
@@ -295,6 +308,7 @@ func Share(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// View downloads a decrypted message
 func View(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 
@@ -307,6 +321,10 @@ func View(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		api.error("Bad request", 400)
 		return
+	}
+
+	if name, ok := api.params["messageName"]; ok {
+		request.Name = name
 	}
 
 	root := new(secrets.Secret)
@@ -362,6 +380,102 @@ func View(w http.ResponseWriter, r *http.Request) {
 	api.rawMessage(message, 200)
 }
 
+// List lists all secrets or keys
+func List(w http.ResponseWriter, r *http.Request) {
+	api := newAPI(w, r)
+
+	if !api.auth() {
+		api.error("Unauthorized", 401)
+		return
+	}
+
+	_, err := api.read()
+	if err != nil {
+		api.error("Bad request", 400)
+		return
+	}
+
+	switch api.params["type"] {
+
+	case "secret", "secrets":
+		listSecrets(api)
+
+	case "key", "keys":
+		listKeys(api)
+
+	default:
+		api.error("Invalid type to list", 500)
+
+	}
+
+}
+
+func listSecrets(api *api) {
+
+	iter := database.ListSecrets()
+
+	for {
+
+		res, err := iter(pageSize)
+		if err != nil {
+			log.Error(err)
+			api.error("Database error", 500)
+			return
+		}
+
+		if len(res) == 0 {
+			return
+		}
+
+		data, err := json.MarshalIndent(&res, "", "  ")
+		if err != nil {
+			log.Error(err)
+			api.error("JSON error", 500)
+			return
+		}
+
+		api.resp.Write(data)
+
+		res = res[:0]
+
+	}
+
+}
+
+func listKeys(api *api) {
+
+	iter := database.ListKeys()
+
+	for {
+
+		res, err := iter(pageSize)
+		if err != nil {
+			log.Error(err)
+			api.error("Database error", 500)
+			return
+		}
+
+		if len(res) == 0 {
+			return
+		}
+
+		data, err := json.MarshalIndent(&res, "", "  ")
+		if err != nil {
+			log.Error(err)
+			api.error("JSON error", 500)
+			return
+		}
+
+		api.resp.Write(data)
+
+		res = res[:0]
+
+	}
+
+}
+
+// Update changes the contents of a message but does not affect
+// which keys it is shared with
 func Update(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 
@@ -422,7 +536,7 @@ func Update(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-type Request struct {
+type request struct {
 	Name    string
 	Key     []byte
 	KeyID   string
@@ -431,11 +545,12 @@ type Request struct {
 }
 
 type api struct {
-	req   *http.Request
-	resp  http.ResponseWriter
-	keyID string
-	key   []byte
-	admin bool
+	req    *http.Request
+	resp   http.ResponseWriter
+	keyID  string
+	key    []byte
+	admin  bool
+	params map[string]string
 }
 
 func newAPI(w http.ResponseWriter, r *http.Request) *api {
@@ -445,11 +560,10 @@ func newAPI(w http.ResponseWriter, r *http.Request) *api {
 	}
 }
 
-func (a *api) read() (req Request, err error) {
-	if a.req.Method == "GET" {
-		urlParams := mux.Vars(a.req)
-		req.Name = urlParams["messageName"]
-	} else {
+func (a *api) read() (req request, err error) {
+	a.params = mux.Vars(a.req)
+
+	if a.req.Method == "POST" {
 		defer a.req.Body.Close()
 		dec := json.NewDecoder(a.req.Body)
 		err = dec.Decode(&req)
