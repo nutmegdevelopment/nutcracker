@@ -52,6 +52,8 @@ func TestEncrypt(t *testing.T) {
 	err = dest.New("testid")
 	assert.Nil(t, err)
 
+	privKey := *dest.raw
+
 	shared, err := s.Share(dest)
 	assert.Nil(t, err)
 
@@ -63,7 +65,7 @@ func TestEncrypt(t *testing.T) {
 
 	s.Update([]byte("new message"))
 
-	message, err = s.Decrypt(shared, dest.Display())
+	message, err = s.Decrypt(shared, privKey[:])
 	assert.Nil(t, err)
 
 	assert.Equal(t, []byte("new message"), message,
