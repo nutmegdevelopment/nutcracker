@@ -11,7 +11,7 @@ container:
     parameters:
       - 
         key: label
-        value: APPID=nutcracker
+        value: APP_NAME=nutcracker
 healthChecks:
   -
     protocol: HTTP
