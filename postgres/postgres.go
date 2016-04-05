@@ -8,6 +8,7 @@ import (
 	"github.com/nutmegdevelopment/nutcracker/secrets"
 )
 
+// DB is an implemntation of the db.DB interface
 type DB struct {
 	conn *gorm.DB
 }
@@ -37,7 +38,7 @@ func (p *DB) Connect() (err error) {
 	if err != nil {
 		return
 	}
-
+    
 	d := p.conn.AutoMigrate(&secrets.Secret{}, &secrets.Key{})
 
 	return d.Error
@@ -51,6 +52,7 @@ func (p *DB) refresh() error {
 	return nil
 }
 
+// Ping checks that the database is connected
 func (p *DB) Ping() (err error) {
 	return p.conn.DB().Ping()
 }
@@ -164,19 +166,17 @@ func (p *DB) ListSecrets() func(int) ([]secrets.Secret, error) {
 		if err := p.refresh(); err != nil {
 			return nil, err
 		}
-		s := new(secrets.Secret)
-		s.Root = false
-		rows, err := p.conn.Order("id asc").Limit(n).Offset(pos).Find(s).Rows()
+		rows, err := p.conn.Table("secrets").Select("id, name, message, nonce, pubkey, key_id").Order("id asc").Limit(n).Offset(pos).Rows()
 		for rows.Next() {
 			out := new(secrets.Secret)
-			err = rows.Scan(&out.ID, &out.Name, &out.Message, &out.Nonce, &out.Pubkey, &out.KeyID, &out.Root)
+			err = rows.Scan(&out.ID, &out.Name, &out.Message, &out.Nonce, &out.Pubkey, &out.KeyID)
 			if err != nil {
 				return
 			}
 			res = append(res, *out)
 		}
-		rows.Close()
-		pos = len(res)
+		err = rows.Close()
+		pos += len(res)
 		return
 	}
 }
@@ -189,8 +189,7 @@ func (p *DB) ListKeys() func(int) ([]secrets.Key, error) {
 		if err := p.refresh(); err != nil {
 			return nil, err
 		}
-		k := new(secrets.Key)
-		rows, err := p.conn.Order("id asc").Limit(n).Offset(pos).Find(k).Rows()
+		rows, err := p.conn.Table("keys").Select("id, name, key, nonce, public, read_only").Order("id asc").Limit(n).Offset(pos).Rows()
 		for rows.Next() {
 			out := new(secrets.Key)
 			err = rows.Scan(&out.ID, &out.Name, &out.Key, &out.Nonce, &out.Public, &out.ReadOnly)
@@ -199,8 +198,8 @@ func (p *DB) ListKeys() func(int) ([]secrets.Key, error) {
 			}
 			res = append(res, *out)
 		}
-		rows.Close()
-		pos = len(res)
+		err = rows.Close()
+		pos += len(res)
 		return
 	}
 }
