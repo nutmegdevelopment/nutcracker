@@ -9,7 +9,7 @@ import (
 )
 
 type DB struct {
-	conn gorm.DB
+	conn *gorm.DB
 }
 
 // Connect connects to the database using env vars.
@@ -68,7 +68,7 @@ func (p *DB) AddSecret(s *secrets.Secret) error {
 		if d.Error == nil {
 			return errors.New("Secret already exists")
 		}
-		if d.Error != gorm.RecordNotFound {
+		if d.Error != gorm.ErrRecordNotFound {
 			return d.Error
 		}
 	}
@@ -76,7 +76,7 @@ func (p *DB) AddSecret(s *secrets.Secret) error {
 	d := p.conn.Find(&secrets.Key{}, &secrets.Key{Name: s.Key.Name})
 	switch {
 
-	case d.Error == gorm.RecordNotFound:
+	case d.Error == gorm.ErrRecordNotFound:
 		err := p.conn.Create(&s.Key).Error
 		if err != nil {
 			return err

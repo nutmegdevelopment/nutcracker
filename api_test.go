@@ -69,7 +69,7 @@ func TestInititalise(t *testing.T) {
 
 	testDb := new(mocks.DB)
 
-	testDb.On("GetRootSecret", &secrets.Secret{Name: "master"}).Return(gorm.RecordNotFound)
+	testDb.On("GetRootSecret", &secrets.Secret{Name: "master"}).Return(gorm.ErrRecordNotFound)
 	testDb.On("AddSecret", mock.AnythingOfType("*secrets.Secret")).Return(nil)
 
 	database = testDb

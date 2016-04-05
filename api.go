@@ -50,7 +50,7 @@ func Initialise(w http.ResponseWriter, r *http.Request) {
 	err := database.GetRootSecret(master)
 	switch err {
 
-	case gorm.RecordNotFound:
+	case gorm.ErrRecordNotFound:
 		break
 
 	case nil:
@@ -98,7 +98,7 @@ func Unseal(w http.ResponseWriter, r *http.Request) {
 	err := database.GetRootSecret(master)
 	switch err {
 
-	case gorm.RecordNotFound:
+	case gorm.ErrRecordNotFound:
 		api.error("Vault not initialised", 404)
 		return
 
@@ -274,7 +274,7 @@ func Share(w http.ResponseWriter, r *http.Request) {
 	err = database.GetRootSecret(secret)
 	switch err {
 
-	case gorm.RecordNotFound:
+	case gorm.ErrRecordNotFound:
 		api.error("Secret does not exist", 404)
 		return
 
@@ -338,7 +338,7 @@ func View(w http.ResponseWriter, r *http.Request) {
 	err = database.GetSharedSecret(shared, key)
 	switch err {
 
-	case gorm.RecordNotFound:
+	case gorm.ErrRecordNotFound:
 		api.error("Secret does not exist", 404)
 		return
 
@@ -355,7 +355,7 @@ func View(w http.ResponseWriter, r *http.Request) {
 	err = database.GetRootSecret(root)
 	switch err {
 
-	case gorm.RecordNotFound:
+	case gorm.ErrRecordNotFound:
 		api.error("Secret does not exist", 404)
 		return
 
@@ -505,7 +505,7 @@ func Update(w http.ResponseWriter, r *http.Request) {
 	err = database.GetRootSecret(secret)
 	switch err {
 
-	case gorm.RecordNotFound:
+	case gorm.ErrRecordNotFound:
 		api.error("Secret does not exist", 404)
 		return
 
