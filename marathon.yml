@@ -9,9 +9,9 @@ container:
       - containerPort: 8443
       - containerPort: 8080
     parameters:
-      -
-        key: label
-        value: APPID=nutcracker
+      - 
+        key: label
+        value: APPID=nutcracker
 healthChecks:
   -
     protocol: HTTP
