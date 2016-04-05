@@ -169,7 +169,7 @@ func (p *DB) ListSecrets() func(int) ([]secrets.Secret, error) {
 		rows, err := p.conn.Order("id asc").Limit(n).Offset(pos).Find(s).Rows()
 		for rows.Next() {
 			out := new(secrets.Secret)
-			err = rows.Scan(out.ID, out.Name, out.Message, out.Nonce, out.Pubkey, out.KeyID, out.Root)
+			err = rows.Scan(&out.ID, &out.Name, &out.Message, &out.Nonce, &out.Pubkey, &out.KeyID, &out.Root)
 			if err != nil {
 				return
 			}
@@ -193,7 +193,7 @@ func (p *DB) ListKeys() func(int) ([]secrets.Key, error) {
 		rows, err := p.conn.Order("id asc").Limit(n).Offset(pos).Find(k).Rows()
 		for rows.Next() {
 			out := new(secrets.Key)
-			err = rows.Scan(out.ID, out.Name, out.Key, out.Nonce, out.Public, out.ReadOnly)
+			err = rows.Scan(&out.ID, &out.Name, &out.Key, &out.Nonce, &out.Public, &out.ReadOnly)
 			if err != nil {
 				return
 			}
