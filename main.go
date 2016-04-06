@@ -6,9 +6,11 @@ import (
 	"os"
 
 	log "github.com/Sirupsen/logrus"
+    stdLog "log"
 	"github.com/gorilla/mux"
 	"github.com/nutmegdevelopment/nutcracker/db"
 	"github.com/nutmegdevelopment/nutcracker/postgres"
+	"io/ioutil"
 )
 
 var database db.DB
@@ -31,7 +33,7 @@ func healthCheck() {
 }
 
 func addRoutes(r *mux.Router) {
-    r.HandleFunc("/health", Health).Methods("GET")
+	r.HandleFunc("/health", Health).Methods("GET")
 	r.HandleFunc("/initialise", Initialise).Methods("GET")
 	r.HandleFunc("/seal", Seal).Methods("GET")
 	r.HandleFunc("/unseal", Unseal).Methods("GET")
@@ -76,12 +78,13 @@ func main() {
 	}
 
 	r := mux.NewRouter()
-    addRoutes(r)
-	
+	addRoutes(r)
 
 	go healthCheck()
 
 	server := new(http.Server)
+	server.ErrorLog = new(stdLog.Logger)
+	server.ErrorLog.SetOutput(ioutil.Discard)
 	server.Addr = addr
 	server.Handler = r
 	log.Infof("HTTPS server listening on: %s", addr)
