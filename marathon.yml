@@ -8,6 +8,7 @@ container:
     portMappings:
       - containerPort: 8080
       - containerPort: 8443
+        hostPort: 31004
     parameters:
       - 
         key: label
