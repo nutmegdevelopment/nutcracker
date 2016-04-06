@@ -6,8 +6,8 @@ container:
   docker:
     image: registry.nutmeg.co.uk:8443/nutcracker:{{version}}
     portMappings:
-      - containerPort: 8443
       - containerPort: 8080
+      - containerPort: 8443
     parameters:
       - 
         key: label
@@ -16,8 +16,8 @@ healthChecks:
   -
     protocol: HTTP
     path: /health
-    portIndex: 1
-    gracePeriodSeconds: 1500
+    portIndex: 0
+    gracePeriodSeconds: 600
     intervalSeconds: 15
     timeoutSeconds: 5
     maxConsecutiveFailures: 10
