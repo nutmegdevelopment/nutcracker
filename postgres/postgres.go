@@ -38,7 +38,7 @@ func (p *DB) Connect() (err error) {
 	if err != nil {
 		return
 	}
-    
+
 	d := p.conn.AutoMigrate(&secrets.Secret{}, &secrets.Key{})
 
 	return d.Error
@@ -202,4 +202,24 @@ func (p *DB) ListKeys() func(int) ([]secrets.Key, error) {
 		pos += len(res)
 		return
 	}
+}
+
+// Metrics returns data about the state of the database
+func (p *DB) Metrics() (map[string]interface{}, error) {
+	metrics := make(map[string]interface{})
+	var count int
+
+	err := p.conn.Table("secrets").Count(&count).Error
+	if err != nil {
+		return metrics, err
+	}
+	metrics["secrets"] = count
+
+	err = p.conn.Table("keys").Count(&count).Error
+	if err != nil {
+		return metrics, err
+	}
+	metrics["keys"] = count
+
+	return metrics, nil
 }

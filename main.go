@@ -14,6 +14,7 @@ import (
 )
 
 var database db.DB
+var viewCount int64
 
 func init() {
 	database = new(postgres.DB)
@@ -34,6 +35,7 @@ func healthCheck() {
 
 func addRoutes(r *mux.Router) {
 	r.HandleFunc("/health", Health).Methods("GET")
+	r.HandleFunc("/metrics", Metrics).Methods("GET")
 	r.HandleFunc("/initialise", Initialise).Methods("GET")
 	r.HandleFunc("/seal", Seal).Methods("GET")
 	r.HandleFunc("/unseal", Unseal).Methods("GET")

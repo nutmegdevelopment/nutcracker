@@ -376,6 +376,7 @@ func View(w http.ResponseWriter, r *http.Request) {
 	defer secrets.Zero(message)
 
 	log.Info("Secret: ", shared.Name, " viewed by: ", key.Name)
+	viewCount++
 
 	api.rawMessage(message, 200)
 }
@@ -534,6 +535,24 @@ func Update(w http.ResponseWriter, r *http.Request) {
 		api.message("OK", 201)
 	}
 	return
+}
+
+func Metrics(w http.ResponseWriter, r *http.Request) {
+	api := newAPI(w, r)
+	metrics, err := database.Metrics()
+	if err != nil {
+		log.Error(err)
+		api.error("Database error", 500)
+	}
+	metrics["views"] = viewCount
+
+	if secrets.IsSealed() {
+		metrics["sealed"] = true
+	} else {
+		metrics["sealed"] = false
+	}
+
+	api.reply(metrics, 200)
 }
 
 type request struct {

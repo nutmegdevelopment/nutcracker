@@ -16,4 +16,5 @@ type DB interface {
     ListKeys() (func(int) ([]secrets.Key, error))
 	UpdateSecret(*secrets.Secret) error
     Ping() error
+    Metrics() (map[string]interface{}, error)
 }

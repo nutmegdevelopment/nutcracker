@@ -79,6 +79,13 @@ func Seal() {
 	Zero(master[:])
 }
 
+func IsSealed() bool {
+    if isNull(master[:]) {
+		return true
+	}
+    return false
+}
+
 type Secret struct {
 	ID      uint   `gorm:"primary_key" json:"-"`
 	Name    string `sql:"not null"`
@@ -113,7 +120,7 @@ func (s *Secret) newNonce() error {
 // Requires the master key to be unsealed.
 func New(name string, message []byte) (s *Secret, err error) {
 
-	if isNull(master[:]) {
+	if IsSealed() {
 		err = errors.New("Please unseal first")
 		return
 	}
@@ -140,7 +147,7 @@ func New(name string, message []byte) (s *Secret, err error) {
 }
 
 func (s *Secret) Update(message []byte) (err error) {
-	if isNull(master[:]) {
+	if IsSealed() {
 		err = errors.New("Please unseal first")
 		return
 	}
@@ -174,7 +181,7 @@ func (s *Secret) encrypt(message []byte) (err error) {
 // the secret.
 // Requires the master key to be unsealed.
 func (s *Secret) Share(key *Key) (shared *Secret, err error) {
-	if isNull(master[:]) {
+	if IsSealed() {
 		err = errors.New("Please unseal first")
 		return
 	}
