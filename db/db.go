@@ -12,8 +12,8 @@ type DB interface {
 	GetKey(*secrets.Key) error
 	GetRootSecret(*secrets.Secret) error
 	GetSharedSecret(*secrets.Secret, *secrets.Key) error
-    ListSecrets() (func(int) ([]secrets.Secret, error))
-    ListKeys() (func(int) ([]secrets.Key, error))
+    ListSecrets(*string) (func(int) ([]secrets.Secret, error))
+    ListKeys(*string) (func(int) ([]secrets.Key, error))
 	UpdateSecret(*secrets.Secret) error
     Ping() error
     Metrics() (map[string]interface{}, error)

@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"database/sql"
 	"errors"
 	"github.com/jackc/pgx"
 	pgx_stdlib "github.com/jackc/pgx/stdlib"
@@ -160,13 +161,26 @@ func (p *DB) UpdateSecret(s *secrets.Secret) error {
 
 // ListSecrets returns an iterator function that walks through all secrets in the database.
 // The iterator takes an integer argument, which is the maximum number of results to return per iteration.
-func (p *DB) ListSecrets() func(int) ([]secrets.Secret, error) {
+// If a key name is specified, the results are limited to secrets shared with that key.
+func (p *DB) ListSecrets(key *string) func(int) ([]secrets.Secret, error) {
 	pos := 0
+
 	return func(n int) (res []secrets.Secret, err error) {
 		if err := p.refresh(); err != nil {
 			return nil, err
 		}
-		rows, err := p.conn.Table("secrets").Select("id, name, message, nonce, pubkey, key_id").Order("id asc").Limit(n).Offset(pos).Rows()
+
+		var rows *sql.Rows
+
+		if key != nil {
+			rows, err = p.conn.Table("secrets").Select(
+				"secrets.id, secrets.name, secrets.message, secrets.nonce, secrets.pubkey, secrets.key_id").Joins(
+				"left join keys on secrets.key_id = keys.id").Where(
+				"keys.name = ?", *key).Order("id asc").Limit(n).Offset(pos).Rows()
+		} else {
+			rows, err = p.conn.Table("secrets").Select("id, name, message, nonce, pubkey, key_id").Order("id asc").Limit(n).Offset(pos).Rows()
+		}
+
 		for rows.Next() {
 			out := new(secrets.Secret)
 			err = rows.Scan(&out.ID, &out.Name, &out.Message, &out.Nonce, &out.Pubkey, &out.KeyID)
@@ -183,18 +197,37 @@ func (p *DB) ListSecrets() func(int) ([]secrets.Secret, error) {
 
 // ListKeys returns an iterator function that walks through all keys in the database.
 // The iterator takes an integer argument, which is the maximum number of results to return per iteration.
-func (p *DB) ListKeys() func(int) ([]secrets.Key, error) {
+// If a secret name is specified, the results are limited to keys with access to that secret.
+func (p *DB) ListKeys(secret *string) func(int) ([]secrets.Key, error) {
 	pos := 0
+
 	return func(n int) (res []secrets.Key, err error) {
 		if err := p.refresh(); err != nil {
 			return nil, err
 		}
-		rows, err := p.conn.Table("keys").Select("id, name, key, nonce, public, read_only").Order("id asc").Limit(n).Offset(pos).Rows()
+
+		var rows *sql.Rows
+
+		if secret != nil {
+			rows, err = p.conn.Table("keys").Select(
+				"keys.id, keys.name, keys.key, keys.nonce, keys.public, keys.read_only").Joins(
+				"left join secrets on keys.id = secrets.key_id").Where(
+				"secrets.name = ?", *secret).Order("id asc").Limit(n).Offset(pos).Rows()
+		} else {
+			rows, err = p.conn.Table("keys").Select("id, name, key, nonce, public, read_only").Order("id asc").Limit(n).Offset(pos).Rows()
+		}
+
 		for rows.Next() {
 			out := new(secrets.Key)
-			err = rows.Scan(&out.ID, &out.Name, &out.Key, &out.Nonce, &out.Public, &out.ReadOnly)
+			var ro sql.NullBool
+			err = rows.Scan(&out.ID, &out.Name, &out.Key, &out.Nonce, &out.Public, &ro)
 			if err != nil {
 				return
+			}
+			if ro.Valid {
+				out.ReadOnly = ro.Bool
+			} else {
+				out.ReadOnly = false
 			}
 			res = append(res, *out)
 		}

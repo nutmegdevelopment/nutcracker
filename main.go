@@ -6,11 +6,11 @@ import (
 	"os"
 
 	log "github.com/Sirupsen/logrus"
-    stdLog "log"
 	"github.com/gorilla/mux"
 	"github.com/nutmegdevelopment/nutcracker/db"
 	"github.com/nutmegdevelopment/nutcracker/postgres"
 	"io/ioutil"
+	stdLog "log"
 )
 
 var database db.DB
@@ -35,6 +35,7 @@ func healthCheck() {
 
 func addRoutes(r *mux.Router) {
 	r.HandleFunc("/health", Health).Methods("GET")
+	r.HandleFunc("/auth", Auth).Methods("GET")
 	r.HandleFunc("/metrics", Metrics).Methods("GET")
 	r.HandleFunc("/initialise", Initialise).Methods("GET")
 	r.HandleFunc("/seal", Seal).Methods("GET")
@@ -45,6 +46,7 @@ func addRoutes(r *mux.Router) {
 	r.HandleFunc("/secrets/view", View).Methods("POST")
 	r.HandleFunc("/secrets/view/{messageName}", View).Queries("secretid", "", "secretkey", "").Methods("GET")
 	r.HandleFunc("/secrets/list/{type}", List).Methods("GET")
+	r.HandleFunc("/secrets/list/{type}/{target}", List).Methods("GET")
 	r.HandleFunc("/secrets/update", Update).Methods("POST")
 }
 
@@ -58,6 +60,10 @@ func main() {
 	addr := os.Getenv("LISTEN")
 	if addr == "" {
 		addr = "0.0.0.0:8443"
+	}
+
+	if os.Getenv("DEBUG") == "true" {
+		log.SetLevel(log.DebugLevel)
 	}
 
 	keyFile := os.Getenv("SSL_KEY")

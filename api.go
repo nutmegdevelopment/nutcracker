@@ -22,7 +22,7 @@ var secretKeyRegex *regexp.Regexp
 
 func init() {
 	// Compile credential checking regex patterns.
-	secretIDRegex = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	secretIDRegex = regexp.MustCompile(`^([0-9a-zA-Z_.\-])+$`)
 	secretKeyRegex = regexp.MustCompile(`^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$`)
 }
 
@@ -125,6 +125,21 @@ func Unseal(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// Auth returns the auth details for the current user
+func Auth(w http.ResponseWriter, r *http.Request) {
+	api := newAPI(w, r)
+
+	if !api.auth() {
+		api.error("Unauthorized", 401)
+		return
+	}
+
+	api.reply(map[string]interface{}{
+		"Admin": api.admin,
+	}, 200)
+	return
+}
+
 // Seal locks the vault into read-only mode
 func Seal(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
@@ -148,6 +163,7 @@ func Message(w http.ResponseWriter, r *http.Request) {
 
 	request, err := api.read()
 	if err != nil {
+		log.Debug(err)
 		api.error("Bad request", 400)
 		return
 	}
@@ -163,6 +179,7 @@ func Message(w http.ResponseWriter, r *http.Request) {
 
 	s, err := secrets.New(request.Name, []byte(request.Message))
 	if err != nil {
+		log.Debug(err)
 		api.error(err.Error(), 500)
 		return
 	}
@@ -197,13 +214,22 @@ func Key(w http.ResponseWriter, r *http.Request) {
 
 	request, err := api.read()
 	if err != nil {
+		log.Debug(err)
 		api.error("Bad request", 400)
 		return
 	}
 
+	if request.Name == "" {
+		request.Name = uuid.New()
+	}
+
+	if !secretIDRegex.MatchString(request.Name) {
+		api.error("Invalid key ID", 400)
+	}
+
 	key := new(secrets.Key)
 
-	err = key.New(uuid.New())
+	err = key.New(request.Name)
 	if err != nil {
 		log.Error(err)
 		api.error("Server error", 500)
@@ -244,6 +270,7 @@ func Share(w http.ResponseWriter, r *http.Request) {
 
 	request, err := api.read()
 	if err != nil {
+		log.Debug(err)
 		api.error("Bad request", 400)
 		return
 	}
@@ -319,6 +346,7 @@ func View(w http.ResponseWriter, r *http.Request) {
 
 	request, err := api.read()
 	if err != nil {
+		log.Debug(err)
 		api.error("Bad request", 400)
 		return
 	}
@@ -370,7 +398,8 @@ func View(w http.ResponseWriter, r *http.Request) {
 
 	message, err := root.Decrypt(shared, api.key)
 	if err != nil {
-		api.error("Cannot decrypt secret", 400)
+		log.Debug(err)
+		api.error("Cannot decrypt secret", 500)
 		return
 	}
 	defer secrets.Zero(message)
@@ -392,6 +421,7 @@ func List(w http.ResponseWriter, r *http.Request) {
 
 	_, err := api.read()
 	if err != nil {
+		log.Debug(err)
 		api.error("Bad request", 400)
 		return
 	}
@@ -399,10 +429,18 @@ func List(w http.ResponseWriter, r *http.Request) {
 	switch api.params["type"] {
 
 	case "secret", "secrets":
-		listSecrets(api)
+		if _, ok := api.params["target"]; ok {
+			listKeys(api)
+		} else {
+			listSecrets(api)
+		}
 
 	case "key", "keys":
-		listKeys(api)
+		if _, ok := api.params["target"]; ok {
+			listSecrets(api)
+		} else {
+			listKeys(api)
+		}
 
 	default:
 		api.error("Invalid type to list", 500)
@@ -413,7 +451,13 @@ func List(w http.ResponseWriter, r *http.Request) {
 
 func listSecrets(api *api) {
 
-	iter := database.ListSecrets()
+	var search *string
+	if _, ok := api.params["target"]; ok {
+		search = new(string)
+		*search = api.params["target"]
+	}
+
+	iter := database.ListSecrets(search)
 
 	for {
 
@@ -445,7 +489,13 @@ func listSecrets(api *api) {
 
 func listKeys(api *api) {
 
-	iter := database.ListKeys()
+	var search *string
+	if _, ok := api.params["target"]; ok {
+		search = new(string)
+		*search = api.params["target"]
+	}
+
+	iter := database.ListKeys(search)
 
 	for {
 
@@ -487,6 +537,7 @@ func Update(w http.ResponseWriter, r *http.Request) {
 
 	request, err := api.read()
 	if err != nil {
+		log.Debug(err)
 		api.error("Bad request", 400)
 		return
 	}
@@ -537,6 +588,7 @@ func Update(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// Metrics returns basic server metrics
 func Metrics(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
 	metrics, err := database.Metrics()

@@ -93,7 +93,7 @@ func (_m *DB) GetSharedSecret(_a0 *secrets.Secret, _a1 *secrets.Key) error {
 }
 
 // ListSecrets provides a mock function with given fields:
-func (_m *DB) ListSecrets() func(int) ([]secrets.Secret, error) {
+func (_m *DB) ListSecrets(s *string) func(int) ([]secrets.Secret, error) {
 	ret := _m.Called()
 
 	var r0 func(int) ([]secrets.Secret, error)
@@ -109,7 +109,7 @@ func (_m *DB) ListSecrets() func(int) ([]secrets.Secret, error) {
 }
 
 // ListKeys provides a mock function with given fields:
-func (_m *DB) ListKeys() func(int) ([]secrets.Key, error) {
+func (_m *DB) ListKeys(s *string) func(int) ([]secrets.Key, error) {
 	ret := _m.Called()
 
 	var r0 func(int) ([]secrets.Key, error)

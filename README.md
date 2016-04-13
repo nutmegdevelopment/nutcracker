@@ -2,7 +2,7 @@
 
 Nutcracker is a simple and secure credential management system, designed for use in rapidly changing environments where other solutions man not be appropriate.
 
-It has a simple JSON api, and requires no configuration other than environment variables, as it's designed to be run in a container.
+It has a simple JSON API, and requires no configuration other than environment variables, as it's designed to be run in a container.
 
 ## API documentation
 
@@ -12,13 +12,17 @@ It has a simple JSON api, and requires no configuration other than environment v
 | /initialise             | GET    |                   | No                    | Set up vault credentials                                           |
 | /unseal                 | GET    |                   | Yes                   | Unlock vault so that secrets can be created                        |
 | /seal                   | GET    |                   | No                    | Lock vault to prevent secret creation                              |
+| /auth                   | GET    |                   | Yes                    | Returns account type                              |
 | /secrets/message        | POST   | name, message     | Yes                   | Create new secret                                                  |
-| /secrets/key            | POST   | admin             | Yes                   | Create new key.  Set the boolean "admin" to true for a key with write access.      |
+| /secrets/key            | POST   | admin             | Yes                   | Create new key.  Set the boolean "admin" to true for a key with write access.  Optionally a "name" attribute can be specified to add a named key (otherwise a UUID will be used).      |
 | /secrets/share          | POST   | name, keyid       | Yes                   | Share a secret with a key for later retrieval                      |
 | /secrets/update         | POST   | name, message     | Yes                   | Update the content of an existing key                              |
 | /secrets/view           | POST   | name              | Yes                   | Retrieve a secret shared with your authentication key              |
 | /secrets/view/{name}    | GET    | name, secretkey, secretid  | No           | Retrieve a secret shared with your authentication key where {name} is the keyname and secretid and secretkey are url parameters. e.g. /secrets/view/name?secretid=...&secretkey=... (see authentication section for more details). |
-| /secrets/list/{type}    | GET    |                   | Yes                   | {type} can be either "secrets" or "keys".  List will return all known secrets/keys as requested. |
+| /secrets/list/keys      | GET    |                   | Yes                   | List all keys |
+| /secrets/list/keys/{secret} | GET    |                   | Yes                   | List all keys which can read the secret |
+| /secrets/list/secrets      | GET    |                   | Yes                   | List all secrets |
+| /secrets/list/secrets/{key} | GET    |                   | Yes                   | List all secrets readable by the key |
 
 ## Authentication
 
@@ -69,6 +73,7 @@ It also supports the following variables:
 | SSL_KEY  | Path to ssl cert.  If empty, the server with generate one. |
 | LISTEN   | Address to listen on.  Uses 0.0.0.0:8443 by default. |
 | LISTEN_HTTP   | Monitoring port to listen on.  Uses 0.0.0.0:8080 by default. |
+| DEBUG    | When set to true, turns on debug logging |
 
 ## Tutorial
 
