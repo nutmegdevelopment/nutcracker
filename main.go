@@ -23,9 +23,9 @@ var (
 )
 
 func init() {
-	flag.StringVar(&certID, "-id", "", "ID to decrypt TLS cert")
-	flag.StringVar(&certKey, "-key", "", "Key to decrypt TLS cert")
-	flag.StringVar(&certName, "-cert", "", "Name of TLS cert.  Will use a selfsigned cert if empty")
+	flag.StringVar(&certID, "id", "", "ID to decrypt TLS cert")
+	flag.StringVar(&certKey, "key", "", "Key to decrypt TLS cert")
+	flag.StringVar(&certName, "cert", "", "Name of TLS cert.  Will use a selfsigned cert if empty")
 	flag.Parse()
 
 	database = new(postgres.DB)
