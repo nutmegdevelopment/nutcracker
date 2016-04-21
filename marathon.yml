@@ -14,7 +14,6 @@ container:
   docker:
     image: registry.nutmeg.co.uk:8443/nutcracker:{{version}}
     portMappings:
-      - containerPort: 8080
       - containerPort: 8443
         hostPort: 31004
     parameters:

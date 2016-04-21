@@ -31,19 +31,6 @@ func init() {
 	database = new(postgres.DB)
 }
 
-// Set up a basic http server for health checks.
-func healthCheck() {
-	addr := os.Getenv("LISTEN_HTTP")
-	if addr == "" {
-		addr = "0.0.0.0:8080"
-	}
-	r := mux.NewRouter()
-	r.HandleFunc("/health", Health).Methods("GET")
-	http.Handle("/", r)
-	log.Infof("HTTP server listening on: %s", addr)
-	http.ListenAndServe(addr, nil)
-}
-
 func addRoutes(r *mux.Router) {
 	r.HandleFunc("/health", Health).Methods("GET")
 	r.HandleFunc("/auth", Auth).Methods("GET")
@@ -97,8 +84,6 @@ func main() {
 
 	r := mux.NewRouter()
 	addRoutes(r)
-
-	go healthCheck()
 
 	server := new(http.Server)
 	server.ErrorLog = new(stdLog.Logger)
