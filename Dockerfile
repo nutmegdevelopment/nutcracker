@@ -1,11 +1,8 @@
-FROM golang:1.6
+FROM frolvlad/alpine-glibc
 
-ENV GOPATH /go
+COPY etc /etc
+ADD https://curl.haxx.se/ca/cacert.pem /etc/ssl/certs/cacert.pem
+COPY nutcracker /nutcracker
 
-COPY . /go/src/github.com/nutmegdevelopment/nutcracker
-
-RUN cd /go/src/github.com/nutmegdevelopment/nutcracker && go get -d ./... && go test ./...
-
-RUN cd /go/src/github.com/nutmegdevelopment/nutcracker && go build -o /go/bin/nutcracker
-
-CMD /go/bin/nutcracker
+CMD [ "/nutcracker" ]
+ENTRYPOINT [ "/nutcracker" ]
