@@ -147,6 +147,11 @@ func readDBcert() (cert []byte, err error) {
 	key := new(secrets.Key)
 	key.Name = certID
 
+	priv, err := base64.StdEncoding.DecodeString(certKey)
+	if err != nil {
+		return
+	}
+
 	err = database.GetSharedSecret(shared, key)
 	switch err {
 
@@ -176,7 +181,7 @@ func readDBcert() (cert []byte, err error) {
 		return
 	}
 
-	return root.Decrypt(shared, []byte(certKey))
+	return root.Decrypt(shared, priv)
 }
 
 // Taken from crypto/x509

@@ -2,14 +2,14 @@ id: /nutcracker
 cpus: 0.1
 mem: 128.0
 instances: 1
-args: [ 
-    "-cert",
-    "{{nutcracker_name}}",
-    "-id",
-    "{{nutcracker_id}}",
-    "-key",
-    "{{nutcracker_key}}"
-    ]
+args: [
+  "-cert",
+  "{{nutcracker_name}}",
+  "-id",
+  "{{nutcracker_id}}",
+  "-key",
+  "{{nutcracker_key}}"
+  ]
 container:
   docker:
     image: registry.nutmeg.co.uk:8443/nutcracker:{{version}}
