@@ -1,8 +1,8 @@
 FROM frolvlad/alpine-glibc
 
-COPY etc /etc
+RUN mkdir -p /etc/ssl/certs
 ADD https://curl.haxx.se/ca/cacert.pem /etc/ssl/certs/cacert.pem
-COPY nutcracker /nutcracker
+ADD nutcracker /nutcracker
 
 CMD [ "/nutcracker" ]
 ENTRYPOINT [ "/nutcracker" ]
