@@ -2,7 +2,7 @@ id: /nutcracker
 cpus: 0.1
 mem: 128.0
 instances: 1
-command: "-cert {{nutcracker_name}} -key {{nutcracker_key}} -id {{nutcracker_id}}"
+cmd: "-cert {{nutcracker_name}} -key {{nutcracker_key}} -id {{nutcracker_id}}"
 container:
   docker:
     image: registry.nutmeg.co.uk:8443/nutcracker:{{version}}
