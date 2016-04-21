@@ -77,15 +77,14 @@ func main() {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	keyFile := os.Getenv("SSL_KEY")
-	certFile := os.Getenv("SSL_CERT")
-
 	var cert tls.Certificate
 
 	if certName == "" {
+		log.Info("Generating self-signed certificate")
 		cert, err = GenCert()
 	} else {
-		cert, err = LoadCert(certFile, keyFile)
+		log.Info("Using certificate from vault")
+		cert, err = GetNutcrackerCert()
 	}
 	if err != nil {
 		log.Fatal(err)
