@@ -36,4 +36,4 @@ env:
   PGPASSWORD: {{db_pass}}
   PGDATABASE: {{db_schema}}
 labels:
-  tags: internal
+  tags: "internal,haproxy-tcp"
