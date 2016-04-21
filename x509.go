@@ -1,17 +1,24 @@
-package main
+package main // import "github.com/nutmegdevelopment/nutcracker"
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"math/big"
 	"net"
+	"strings"
 	"time"
+
+	"github.com/jinzhu/gorm"
+	"github.com/nutmegdevelopment/nutcracker/secrets"
 )
 
 var ciphers = []uint16{tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256}
@@ -81,7 +88,7 @@ func LoadCert(cert, key string) (tlsCert tls.Certificate, err error) {
 	return tls.LoadX509KeyPair(cert, key)
 }
 
-// Creates a TLs socket
+// Creates a TLS socket
 func Socket(address string, cert tls.Certificate) (socket net.Listener, err error) {
 	cfg := &tls.Config{
 		Rand:                     nil, // Use crypto/rand
@@ -95,4 +102,99 @@ func Socket(address string, cert tls.Certificate) (socket net.Listener, err erro
 	cfg.Certificates[0] = cert
 
 	return tls.Listen("tcp", address, cfg)
+}
+
+func GetNutcrackerCert() (cert tls.Certificate, err error) {
+	encoded, err := readDBcert()
+	if err != nil {
+		return
+	}
+	decoded := make([]byte, base64.StdEncoding.DecodedLen(len(encoded)-8))
+	n, err := base64.StdEncoding.Decode(decoded, encoded[8:])
+
+	decoded = decoded[:n]
+
+	for len(decoded) > 0 {
+		var block *pem.Block
+		block, decoded = pem.Decode(decoded)
+		if block == nil {
+			break
+		}
+
+		if block.Type == "CERTIFICATE" {
+			cert.Certificate = append(cert.Certificate, block.Bytes)
+		}
+
+		if block.Type == "PRIVATE KEY" || strings.HasSuffix(block.Type, " PRIVATE KEY") {
+			cert.PrivateKey, err = parsePrivateKey(block.Bytes)
+			if err != nil {
+				continue
+			}
+		}
+
+	}
+
+	return
+
+}
+
+func readDBcert() (cert []byte, err error) {
+	root := new(secrets.Secret)
+	shared := new(secrets.Secret)
+	root.Name = certName
+	shared.Name = certName
+
+	key := new(secrets.Key)
+	key.Name = certID
+
+	err = database.GetSharedSecret(shared, key)
+	switch err {
+
+	case gorm.ErrRecordNotFound:
+		err = errors.New("Cert is not shared or does not exist")
+		return
+
+	case nil:
+		break
+
+	default:
+		return
+
+	}
+
+	err = database.GetRootSecret(root)
+	switch err {
+
+	case gorm.ErrRecordNotFound:
+		err = errors.New("Cert does not exist")
+		return
+
+	case nil:
+		break
+
+	default:
+		return
+	}
+
+	return root.Decrypt(shared, []byte(certKey))
+}
+
+// Taken from crypto/x509
+func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
+	if key, err := x509.ParsePKCS1PrivateKey(der); err == nil {
+		return key, nil
+	}
+	if key, err := x509.ParsePKCS8PrivateKey(der); err == nil {
+		switch key := key.(type) {
+		case *rsa.PrivateKey, *ecdsa.PrivateKey:
+			return key, nil
+		default:
+			return nil, errors.New("crypto/tls: found unknown private key type in PKCS#8 wrapping")
+		}
+	}
+	if key, err := x509.ParseECPrivateKey(der); err == nil {
+		return key, nil
+	}
+
+	return nil, errors.New("crypto/tls: failed to parse private key")
 }

@@ -69,8 +69,6 @@ It also supports the following variables:
 
 | Variable | Description |
 |----------|-------------|
-| SSL_CERT | Path to ssl cert.  If empty, the server with generate a self-signed one. |
-| SSL_KEY  | Path to ssl cert.  If empty, the server with generate one. |
 | LISTEN   | Address to listen on.  Uses 0.0.0.0:8443 by default. |
 | LISTEN_HTTP   | Monitoring port to listen on.  Uses 0.0.0.0:8080 by default. |
 | DEBUG    | When set to true, turns on debug logging |

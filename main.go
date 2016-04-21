@@ -1,7 +1,8 @@
-package main
+package main // import "github.com/nutmegdevelopment/nutcracker"
 
 import (
 	"crypto/tls"
+	"flag"
 	"net/http"
 	"os"
 
@@ -13,10 +14,20 @@ import (
 	stdLog "log"
 )
 
-var database db.DB
-var viewCount int64
+var (
+	database  db.DB
+	viewCount int64
+	certID    string
+	certKey   string
+	certName  string
+)
 
 func init() {
+	flag.StringVar(&certID, "-id", "", "ID to decrypt TLS cert")
+	flag.StringVar(&certKey, "-key", "", "Key to decrypt TLS cert")
+	flag.StringVar(&certName, "-cert", "", "Name of TLS cert.  Will use a selfsigned cert if empty")
+	flag.Parse()
+
 	database = new(postgres.DB)
 }
 
@@ -71,7 +82,7 @@ func main() {
 
 	var cert tls.Certificate
 
-	if keyFile == "" && certFile == "" {
+	if certName == "" {
 		cert, err = GenCert()
 	} else {
 		cert, err = LoadCert(certFile, keyFile)
