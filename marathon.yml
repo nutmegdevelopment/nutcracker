@@ -35,4 +35,7 @@ env:
   PGPASSWORD: {{db_pass}}
   PGDATABASE: {{db_schema}}
 labels:
-  tags: "internal,haproxy-tcp"
+  HAPROXY_GROUP: internal
+  HAPROXY_0_VHOST: nutcracker.dev.nutmeg.co.uk
+  HAPROXY_0_BACKEND_SERVER_OPTIONS: "  server {serverName} {host_ipv4}:{port}{cookieOptions}{healthCheckOptions}{otherOptions} ssl verify none"
+  HAPROXY_0_REDIRECT_TO_HTTPS: true
