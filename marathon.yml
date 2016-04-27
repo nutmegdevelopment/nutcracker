@@ -22,8 +22,7 @@ container:
         value: APP_NAME=nutcracker
 healthChecks:
   -
-    protocol: HTTP
-    path: /health
+    protocol: TCP
     portIndex: 0
     gracePeriodSeconds: 600
     intervalSeconds: 15
