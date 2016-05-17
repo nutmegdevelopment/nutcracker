@@ -371,7 +371,7 @@ func TestDelete(t *testing.T) {
 
 	testDb := new(mocks.DB)
 
-	r, err := http.NewRequest("GET", "/secrets/delete/secrets/test-secret", nil)
+	r, err := http.NewRequest("DELETE", "/secrets/delete/secrets/test-secret", nil)
 	assert.Nil(t, err, "Should not return error")
 
 	secrets.New("test-secret", []byte("test"))
