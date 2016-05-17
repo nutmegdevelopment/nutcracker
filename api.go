@@ -588,6 +588,69 @@ func Update(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// Delete removes a secret or key
+func Delete(w http.ResponseWriter, r *http.Request) {
+	api := newAPI(w, r)
+
+	if !api.auth() || !api.admin {
+		api.error("Unauthorized", 401)
+		return
+	}
+
+	_, err := api.read()
+	if err != nil {
+		log.Debug(err)
+		api.error("Bad request", 400)
+		return
+	}
+
+	var ok bool
+	switch api.params["type"] {
+
+	case "secret", "secrets":
+		s := new(secrets.Secret)
+		s.Name, ok = api.params["target"]
+		if !ok {
+			log.Debug(err)
+			api.error("Invalid secret", 400)
+		}
+		err = database.GetRootSecret(s)
+		if err != nil {
+			log.Error(err)
+			api.error("Database error", 500)
+		}
+		err = database.DeleteSecret(s)
+		if err != nil {
+			log.Error(err)
+			api.error("Database error", 500)
+		}
+
+	case "key", "keys":
+		k := new(secrets.Key)
+		k.Name, ok = api.params["target"]
+		if !ok {
+			log.Debug(err)
+			api.error("Invalid key", 400)
+		}
+		err = database.GetKey(k)
+		if err != nil {
+			log.Error(err)
+			api.error("Database error", 500)
+		}
+		err = database.DeleteKey(k)
+		if err != nil {
+			log.Error(err)
+			api.error("Database error", 500)
+		}
+
+	default:
+		api.error("Invalid type to delete", 500)
+
+	}
+
+	api.message("OK", 200)
+}
+
 // Metrics returns basic server metrics
 func Metrics(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)

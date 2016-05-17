@@ -237,6 +237,32 @@ func (p *DB) ListKeys(secret *string) func(int) ([]secrets.Key, error) {
 	}
 }
 
+// DeleteSecret removes a secret from the DB
+func (p *DB) DeleteSecret(s *secrets.Secret) (err error) {
+	if s == nil || s.ID == 0 {
+		return errors.New("No secret specified")
+	}
+
+	if s.Name == "master" {
+		return errors.New("Cannot delete master")
+	}
+
+	return p.conn.Delete(s).Error
+}
+
+// DeleteKey removes a key from the DB
+func (p *DB) DeleteKey(k *secrets.Key) (err error) {
+	if k == nil || k.ID == 0 {
+		return errors.New("No key specified")
+	}
+
+	if k.Name == "master" {
+		return errors.New("Cannot delete master")
+	}
+
+	return p.conn.Delete(k).Error
+}
+
 // Metrics returns data about the state of the database
 func (p *DB) Metrics() (map[string]interface{}, error) {
 	metrics := make(map[string]interface{})

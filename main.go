@@ -46,6 +46,7 @@ func addRoutes(r *mux.Router) {
 	r.HandleFunc("/secrets/list/{type}", List).Methods("GET")
 	r.HandleFunc("/secrets/list/{type}/{target}", List).Methods("GET")
 	r.HandleFunc("/secrets/update", Update).Methods("POST")
+	r.HandleFunc("/secrets/delete/{type}/{target}", Delete).Methods("DELETE")
 }
 
 func main() {

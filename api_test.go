@@ -26,9 +26,9 @@ func init() {
 
 func TestHealth(t *testing.T) {
 	w := httptest.NewRecorder()
-    testDb := new(mocks.DB)
-    testDb.On("Ping").Return(nil)
-    database = testDb
+	testDb := new(mocks.DB)
+	testDb.On("Ping").Return(nil)
+	database = testDb
 	Health(w, nil)
 	res := getResp(w.Body.Bytes())
 	assert.Contains(t, res, "response", "Result should contain response")
@@ -321,7 +321,7 @@ func TestListSecret(t *testing.T) {
 	expected = append(expected, buf...)
 
 	assert.Equal(t, expected, w.Body.Bytes())
-    
+
 }
 
 func TestUpdate(t *testing.T) {
@@ -356,6 +356,37 @@ func TestUpdate(t *testing.T) {
 	res := getResp(w.Body.Bytes())
 	assert.Contains(t, res, "response", "Result should contain response")
 	assert.Equal(t, "OK", res["response"])
+}
+
+func TestDelete(t *testing.T) {
+	w := httptest.NewRecorder()
+
+	m := mux.NewRouter()
+	addRoutes(m)
+
+	key := new(secrets.Key)
+	err := key.New("968cd432-c97a-11e5-9956-625662870761")
+	priv := key.Display()
+	assert.Nil(t, err, "Should not return error")
+
+	testDb := new(mocks.DB)
+
+	r, err := http.NewRequest("DELETE", "/secrets/delete/secrets/test-secret", nil)
+	assert.Nil(t, err, "Should not return error")
+
+	secrets.New("test-secret", []byte("test"))
+
+	authSetup(testDb, r, priv)
+
+	testDb.On("GetRootSecret", &secrets.Secret{Name: "test-secret"}).Run(func(args mock.Arguments) {
+		args.Get(0).(*secrets.Secret).Name = "test-secret"
+		args.Get(0).(*secrets.Secret).ID = 2
+	}).Return(nil)
+	testDb.On("DeleteSecret", &secrets.Secret{ID: 2, Name: "test-secret"}).Return(nil)
+
+	database = testDb
+
+	m.ServeHTTP(w, r)
 }
 
 func TestSeal(t *testing.T) {

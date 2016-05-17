@@ -23,6 +23,8 @@ It has a simple JSON API, and requires no configuration other than environment v
 | /secrets/list/keys/{secret} | GET    |                   | Yes                   | List all keys which can read the secret |
 | /secrets/list/secrets      | GET    |                   | Yes                   | List all secrets |
 | /secrets/list/secrets/{key} | GET    |                   | Yes                   | List all secrets readable by the key |
+| /secrets/delete/secrets/{secret} | DELETE    |                   | Yes                   | Delete a secret by name |
+| /secrets/delete/key/{key} | DELETE    |                   | Yes                   | Delete a key by name |
 
 ## Authentication
 
