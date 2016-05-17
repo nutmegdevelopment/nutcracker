@@ -611,14 +611,17 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		s := new(secrets.Secret)
 		s.Name, ok = api.params["target"]
 		if !ok {
+			log.Debug(err)
 			api.error("Invalid secret", 400)
 		}
 		err = database.GetRootSecret(s)
 		if err != nil {
+			log.Error(err)
 			api.error("Database error", 500)
 		}
 		err = database.DeleteSecret(s)
 		if err != nil {
+			log.Error(err)
 			api.error("Database error", 500)
 		}
 
@@ -626,14 +629,17 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		k := new(secrets.Key)
 		k.Name, ok = api.params["target"]
 		if !ok {
+			log.Debug(err)
 			api.error("Invalid key", 400)
 		}
 		err = database.GetKey(k)
 		if err != nil {
+			log.Error(err)
 			api.error("Database error", 500)
 		}
 		err = database.DeleteKey(k)
 		if err != nil {
+			log.Error(err)
 			api.error("Database error", 500)
 		}
 
