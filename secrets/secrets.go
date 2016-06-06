@@ -171,7 +171,7 @@ func (s *Secret) Update(message []byte) (err error) {
 }
 
 func (s *Secret) encrypt(message []byte) (err error) {
-	if s.newNonce() != nil {
+	if err = masterKey.newNonce(); err != nil {
 		return
 	}
 
@@ -206,7 +206,7 @@ func (s *Secret) Share(key *Key) (shared *Secret, err error) {
 	}
 	defer s.Key.Zero()
 
-	if shared.newNonce() != nil {
+	if err = shared.newNonce(); err != nil {
 		return
 	}
 
@@ -306,7 +306,7 @@ func (k *Key) newNonce() error {
 // Creates a new key
 func (k *Key) New(name string) (err error) {
 	k.Name = name
-	if k.newNonce() != nil {
+	if err = k.newNonce(); err != nil {
 		return
 	}
 	pub := new([32]byte)
