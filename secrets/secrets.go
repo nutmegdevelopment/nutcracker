@@ -11,12 +11,16 @@ import (
 	"golang.org/x/crypto/nacl/secretbox"
 )
 
-var master *[32]byte
+var (
+	master    *[32]byte
+	randomSrc io.Reader
+)
 
 const MasterKeyName = "master"
 
 func init() {
 	master = new([32]byte)
+	randomSrc = rand.Reader
 }
 
 // Create a new master secret.
@@ -28,14 +32,17 @@ func Initialise() (masterKey *Secret, err error) {
 	masterKey.Name = MasterKeyName
 	masterKey.Root = true
 
-	if masterKey.newNonce() != nil {
+	if err = masterKey.newNonce(); err != nil {
 		return
 	}
 
 	// Create a new master key
-	_, err = io.ReadFull(rand.Reader, master[:])
+	n, err := io.ReadFull(randomSrc, master[:])
 	if err != nil {
 		return
+	}
+	if n != 32 {
+		return nil, errors.New("Unable to read from random source")
 	}
 
 	// Create an encryption key
@@ -80,10 +87,10 @@ func Seal() {
 }
 
 func IsSealed() bool {
-    if isNull(master[:]) {
+	if isNull(master[:]) {
 		return true
 	}
-    return false
+	return false
 }
 
 type Secret struct {
@@ -112,7 +119,10 @@ func (s *Secret) pubkey() *[32]byte {
 func (s *Secret) newNonce() error {
 	s.Nonce = make([]byte, 24, 24)
 	// We generate nonces randomly - chance of collision is negligable
-	_, err := io.ReadFull(rand.Reader, s.Nonce)
+	n, err := io.ReadFull(randomSrc, s.Nonce)
+	if n != 24 {
+		return errors.New("Unable to read from random source")
+	}
 	return err
 }
 
@@ -286,7 +296,10 @@ func (k *Key) pubkey() *[32]byte {
 func (k *Key) newNonce() error {
 	k.Nonce = make([]byte, 24, 24)
 	// We generate nonces randomly - chance of collision is negligable
-	_, err := io.ReadFull(rand.Reader, k.Nonce)
+	n, err := io.ReadFull(randomSrc, k.Nonce)
+	if n != 24 {
+		return errors.New("Unable to read from random source")
+	}
 	return err
 }
 
@@ -297,7 +310,7 @@ func (k *Key) New(name string) (err error) {
 		return
 	}
 	pub := new([32]byte)
-	pub, k.raw, err = box.GenerateKey(rand.Reader)
+	pub, k.raw, err = box.GenerateKey(randomSrc)
 	k.Public = pub[:]
 	return
 }
