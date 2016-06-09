@@ -171,7 +171,7 @@ func (s *Secret) Update(message []byte) (err error) {
 }
 
 func (s *Secret) encrypt(message []byte) (err error) {
-	if err = masterKey.newNonce(); err != nil {
+	if err = s.newNonce(); err != nil {
 		return
 	}
 
