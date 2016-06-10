@@ -239,7 +239,7 @@ func (p *DB) ListKeys(secret *string) func(int) ([]secrets.Key, error) {
 
 // DeleteSecret removes a secret from the DB
 func (p *DB) DeleteSecret(s *secrets.Secret) (err error) {
-	if s == nil || s.ID == 0 {
+	if s == nil || s.Name == "" {
 		return errors.New("No secret specified")
 	}
 
@@ -252,7 +252,7 @@ func (p *DB) DeleteSecret(s *secrets.Secret) (err error) {
 
 // DeleteKey removes a key from the DB
 func (p *DB) DeleteKey(k *secrets.Key) (err error) {
-	if k == nil || k.ID == 0 {
+	if k == nil || k.Name == "" {
 		return errors.New("No key specified")
 	}
 
