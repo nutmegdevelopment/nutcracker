@@ -247,7 +247,7 @@ func (p *DB) DeleteSecret(s *secrets.Secret) (err error) {
 		return errors.New("Cannot delete master")
 	}
 
-	return p.conn.Delete(s).Error
+	return p.conn.Where("name = ?", s.Name).Delete(secrets.Secret{}).Error
 }
 
 // DeleteKey removes a key from the DB
@@ -260,7 +260,7 @@ func (p *DB) DeleteKey(k *secrets.Key) (err error) {
 		return errors.New("Cannot delete master")
 	}
 
-	return p.conn.Delete(k).Error
+	return p.conn.Where("name = ?", k.Name).Delete(secrets.Key{}).Error
 }
 
 // Metrics returns data about the state of the database
