@@ -689,11 +689,18 @@ func newAPI(w http.ResponseWriter, r *http.Request) *api {
 func (a *api) read() (req request, err error) {
 	a.params = mux.Vars(a.req)
 
-	if a.req.Method == "POST" {
-		defer a.req.Body.Close()
-		dec := json.NewDecoder(a.req.Body)
-		err = dec.Decode(&req)
+	if a.req.Method != "POST" && a.req.Method != "PUT" {
+		a.req.Body.Close()
+		return
 	}
+
+	defer a.req.Body.Close()
+	dec := json.NewDecoder(a.req.Body)
+	err = dec.Decode(&req)
+	if err != nil {
+		return
+	}
+	err = a.req.Body.Close()
 	return
 }
 

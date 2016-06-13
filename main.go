@@ -3,15 +3,16 @@ package main // import "github.com/nutmegdevelopment/nutcracker"
 import (
 	"crypto/tls"
 	"flag"
+	"io/ioutil"
+	stdLog "log"
 	"net/http"
 	"os"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/nutmegdevelopment/nutcracker/db"
 	"github.com/nutmegdevelopment/nutcracker/postgres"
-	"io/ioutil"
-	stdLog "log"
 )
 
 var (
@@ -90,7 +91,7 @@ func main() {
 	server.ErrorLog = new(stdLog.Logger)
 	server.ErrorLog.SetOutput(ioutil.Discard)
 	server.Addr = addr
-	server.Handler = r
+	server.Handler = context.ClearHandler(r)
 	log.Infof("HTTPS server listening on: %s", addr)
 	server.Serve(sock)
 }
