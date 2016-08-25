@@ -17,7 +17,6 @@ type DB interface {
 	DeleteSecret(*secrets.Secret) error
 	DeleteKey(*secrets.Key) error
 	UpdateSecret(*secrets.Secret) error
-	RotateMaster(*secrets.Secret) error
 	Ping() error
 	Metrics() (map[string]interface{}, error)
 }
