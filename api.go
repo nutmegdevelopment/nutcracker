@@ -42,6 +42,7 @@ func Health(w http.ResponseWriter, r *http.Request) {
 func Initialise(w http.ResponseWriter, r *http.Request) {
 
 	api := newAPI(w, r)
+	defer api.req.Body.Close()
 
 	// Check for an existing master secret
 	master := new(secrets.Secret)
@@ -86,6 +87,7 @@ func Initialise(w http.ResponseWriter, r *http.Request) {
 // Unseal opens the vault for writing
 func Unseal(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
+	defer api.req.Body.Close()
 
 	if !api.auth() || !api.admin {
 		api.error("Unauthorized", 401)
@@ -143,6 +145,7 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 // Seal locks the vault into read-only mode
 func Seal(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
+	defer api.req.Body.Close()
 
 	secrets.Seal()
 
@@ -155,6 +158,7 @@ func Seal(w http.ResponseWriter, r *http.Request) {
 // Message adds a new secret message to the vault
 func Message(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
+	defer api.req.Body.Close()
 
 	if !api.auth() || !api.admin {
 		api.error("Unauthorized", 401)
@@ -206,6 +210,7 @@ func Message(w http.ResponseWriter, r *http.Request) {
 // Key adds a new secret key to the vault
 func Key(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
+	defer api.req.Body.Close()
 
 	if !api.auth() || !api.admin {
 		api.error("Unauthorized", 401)
@@ -262,6 +267,7 @@ func Key(w http.ResponseWriter, r *http.Request) {
 // Share grants a key access to a message
 func Share(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
+	defer api.req.Body.Close()
 
 	if !api.auth() || !api.admin {
 		api.error("Unauthorized", 401)
@@ -338,6 +344,7 @@ func Share(w http.ResponseWriter, r *http.Request) {
 // View downloads a decrypted message
 func View(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
+	defer api.req.Body.Close()
 
 	if !api.auth() {
 		api.error("Unauthorized", 401)
@@ -413,6 +420,7 @@ func View(w http.ResponseWriter, r *http.Request) {
 // List lists all secrets or keys
 func List(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
+	defer api.req.Body.Close()
 
 	if !api.auth() {
 		api.error("Unauthorized", 401)
@@ -529,6 +537,7 @@ func listKeys(api *api) {
 // which keys it is shared with
 func Update(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
+	defer api.req.Body.Close()
 
 	if !api.auth() || !api.admin {
 		api.error("Unauthorized", 401)
@@ -591,6 +600,7 @@ func Update(w http.ResponseWriter, r *http.Request) {
 // Delete removes a secret or key
 func Delete(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
+	defer api.req.Body.Close()
 
 	if !api.auth() || !api.admin {
 		api.error("Unauthorized", 401)
@@ -646,6 +656,8 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 // Metrics returns basic server metrics
 func Metrics(w http.ResponseWriter, r *http.Request) {
 	api := newAPI(w, r)
+	defer api.req.Body.Close()
+
 	metrics, err := database.Metrics()
 	if err != nil {
 		log.Error(err)
@@ -690,17 +702,14 @@ func (a *api) read() (req request, err error) {
 	a.params = mux.Vars(a.req)
 
 	if a.req.Method != "POST" && a.req.Method != "PUT" {
-		a.req.Body.Close()
 		return
 	}
 
-	defer a.req.Body.Close()
 	dec := json.NewDecoder(a.req.Body)
 	err = dec.Decode(&req)
 	if err != nil {
 		return
 	}
-	err = a.req.Body.Close()
 	return
 }
 
