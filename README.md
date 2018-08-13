@@ -1,6 +1,6 @@
 # Nutcracker
 
-Nutcracker is a simple and secure credential management system, designed for use in rapidly changing environments where other solutions man not be appropriate.
+Nutcracker is a simple and secure credential management system, designed for use in rapidly changing environments where other solutions may not be appropriate.
 
 It has a simple JSON API, and requires no configuration other than environment variables, as it's designed to be run in a container.
 
@@ -29,7 +29,7 @@ It has a simple JSON API, and requires no configuration other than environment v
 ## Authentication
 
 When you intialise the vault, a master key will be created.
-This will allow you to create new keys to distribute to users, and can be used to unseal the vault if the server is restarted, or the vault is sealed.
+This will allow you to create new keys to distribute to users, and can be used to unseal the vault if the server is restarted, or if the vault is sealed.
 
 Authentication for calls that require it is done by including the following headers:
 
