@@ -15,7 +15,7 @@ container:
     image: registry.nutmeg.co.uk:8443/nutcracker:{{version}}
     portMappings:
       - containerPort: 8443
-        hostPort: 31004
+        hostPort: 31010
     parameters:
       - 
         key: label
