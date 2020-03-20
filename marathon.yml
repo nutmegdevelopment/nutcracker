@@ -1,4 +1,4 @@
-id: /nutcracker
+id: /nutcracker-postgres-test
 cpus: 0.1
 mem: 512.0
 instances: 1
@@ -19,7 +19,7 @@ container:
     parameters:
       - 
         key: label
-        value: APP_NAME=nutcracker
+        value: APP_NAME=nutcracker-postgres-test
 healthChecks:
   -
     protocol: TCP
